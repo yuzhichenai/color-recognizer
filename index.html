@@ -13,7 +13,7 @@
       <div class="topbar-left">
         <span class="logo-mark">🎨</span>
         <span class="logo-text">颜色识别器</span>
-        <span class="logo-badge">v1.1.0</span>
+        <span class="logo-badge">v1.2.0</span>
       </div>
       <div class="topbar-right">
         <span class="status-dot"></span>
@@ -41,6 +41,7 @@
               <span class="shortcut"><kbd>Ctrl+V</kbd> 粘贴</span>
               <span class="shortcut"><kbd>+</kbd><kbd>-</kbd> 缩放</span>
               <span class="shortcut"><kbd>C</kbd> 复制色号</span>
+              <span class="shortcut"><kbd>双击</kbd> 重置缩放</span>
             </div>
           </div>
           <div class="color-tooltip" id="colorTooltip" hidden>
@@ -48,6 +49,13 @@
             <span class="tooltip-hex" id="tooltipHex">#000000</span>
           </div>
           <div class="zoom-label" id="zoomLabel" hidden></div>
+          <div class="magnifier" id="magnifier" hidden>
+            <canvas id="magnifierCanvas"></canvas>
+            <div class="magnifier-info">
+              <span class="magnifier-hex" id="magnifierHex"></span>
+              <span class="magnifier-coord" id="magnifierCoord"></span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -70,6 +78,10 @@
                 <span class="color-label">&nbsp;</span>
                 <span class="color-value mono" id="rgbValue">---, ---, ---</span>
               </div>
+              <div class="color-name" id="colorName" hidden>
+                <span class="color-name-label">🏷️</span>
+                <span class="color-name-value" id="colorNameValue"></span>
+              </div>
               <button class="btn-copy" id="copyBtn">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <rect x="3" y="5" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
@@ -84,7 +96,7 @@
         <section class="panel-section history-section">
           <div class="section-header">
             <h3 class="panel-title">取色记录</h3>
-            <span class="section-badge" id="historyCount">0</span>
+            <span class="section-badge" id="historyCount">0/20</span>
           </div>
           <div class="history-list" id="historyList">
             <p class="empty-hint">暂无记录</p>

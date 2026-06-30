@@ -294,6 +294,54 @@ kbd {
   backdrop-filter: blur(8px);
 }
 
+.magnifier {
+  position: absolute;
+  pointer-events: none;
+  z-index: 20;
+  background: #141a26;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transform: translate(18px, -50%);
+}
+
+#magnifierCanvas {
+  display: block;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  border: 2px solid var(--primary);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.2);
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.magnifier-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.magnifier-hex {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  color: var(--text);
+}
+
+.magnifier-coord {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
 .panel {
   display: flex;
   flex-direction: column;
@@ -458,6 +506,24 @@ kbd {
 .btn-copy svg {
   width: 15px;
   height: 15px;
+}
+
+.color-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+}
+
+.color-name-label {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.color-name-value {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
 }
 
 .history-section {

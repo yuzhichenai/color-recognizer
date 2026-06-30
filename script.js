@@ -20,6 +20,13 @@
   const tooltipSwatch = document.getElementById('tooltipSwatch');
   const tooltipHex = document.getElementById('tooltipHex');
   const zoomLabel = document.getElementById('zoomLabel');
+  const magnifier = document.getElementById('magnifier');
+  const magnifierCanvas = document.getElementById('magnifierCanvas');
+  const magnifierCtx = magnifierCanvas.getContext('2d');
+  const magnifierHex = document.getElementById('magnifierHex');
+  const magnifierCoord = document.getElementById('magnifierCoord');
+  const colorName = document.getElementById('colorName');
+  const colorNameValue = document.getElementById('colorNameValue');
   const dropOverlay = document.getElementById('dropOverlay');
   const toast = document.getElementById('toast');
   const modeBtns = document.querySelectorAll('.mode-btn');
@@ -40,13 +47,225 @@
   let canvasW = 0;
   let canvasH = 0;
   let dragCounter = 0;
+  let lastHoverColor = null;
 
   const MAX_IMAGE_SIZE = 4096;
   const ZOOM_MIN = 0.1;
   const ZOOM_MAX = 20;
   const ZOOM_STEP = 0.1;
+  const STORAGE_KEY = 'color-recognizer-history';
+  const SELECTED_KEY = 'color-recognizer-selected';
+  const HISTORY_MAX = 20;
+  const MAGNIFIER_SIZE = 7;
+  const PIXEL_SCALE = 12;
+
+  const COLOR_NAMES = [
+    { name: '黑色 Black', r: 0, g: 0, b: 0 },
+    { name: '白色 White', r: 255, g: 255, b: 255 },
+    { name: '红色 Red', r: 255, g: 0, b: 0 },
+    { name: '橙色 Orange', r: 255, g: 165, b: 0 },
+    { name: '黄色 Yellow', r: 255, g: 255, b: 0 },
+    { name: '绿色 Green', r: 0, g: 128, b: 0 },
+    { name: '蓝色 Blue', r: 0, g: 0, b: 255 },
+    { name: '紫色 Purple', r: 128, g: 0, b: 128 },
+    { name: '灰色 Gray', r: 128, g: 128, b: 128 },
+    { name: '银色 Silver', r: 192, g: 192, b: 192 },
+    { name: '栗色 Maroon', r: 128, g: 0, b: 0 },
+    { name: '橄榄色 Olive', r: 128, g: 128, b: 0 },
+    { name: '深青色 Teal', r: 0, g: 128, b: 128 },
+    { name: '藏青色 Navy', r: 0, g: 0, b: 128 },
+    { name: '紫红色 Fuchsia', r: 255, g: 0, b: 255 },
+    { name: '青色 Cyan', r: 0, g: 255, b: 255 },
+    { name: '珊瑚红 Coral', r: 255, g: 127, b: 80 },
+    { name: '番茄红 Tomato', r: 255, g: 99, b: 71 },
+    { name: '金橙色 Gold', r: 255, g: 215, b: 0 },
+    { name: '橙红色 OrangeRed', r: 255, g: 69, b: 0 },
+    { name: '暗红色 DarkRed', r: 139, g: 0, b: 0 },
+    { name: '印度红 IndianRed', r: 205, g: 92, b: 92 },
+    { name: '浅珊瑚 LightCoral', r: 240, g: 128, b: 128 },
+    { name: '三文鱼 Salmon', r: 250, g: 128, b: 114 },
+    { name: '暗三文鱼 DarkSalmon', r: 233, g: 150, b: 122 },
+    { name: '亮三文鱼 LightSalmon', r: 255, g: 160, b: 122 },
+    { name: '深粉红 DeepPink', r: 255, g: 20, b: 147 },
+    { name: '粉红 Pink', r: 255, g: 192, b: 203 },
+    { name: '浅粉红 LightPink', r: 255, g: 182, b: 193 },
+    { name: '热粉红 HotPink', r: 255, g: 105, b: 180 },
+    { name: '淡紫红 PaleVioletRed', r: 219, g: 112, b: 147 },
+    { name: '中紫红 MediumVioletRed', r: 199, g: 21, b: 133 },
+    { name: '淡珊瑚 PaleCoral', r: 240, g: 128, b: 128 },
+    { name: '玫瑰棕 RosyBrown', r: 188, g: 143, b: 143 },
+    { name: '雪白 Snow', r: 255, g: 250, b: 250 },
+    { name: '蜜瓜色 Honeydew', r: 240, g: 255, b: 240 },
+    { name: '薄荷奶油 MintCream', r: 245, g: 255, b: 250 },
+    { name: '天蓝 Azure', r: 240, g: 255, b: 255 },
+    { name: '爱丽丝蓝 AliceBlue', r: 240, g: 248, b: 255 },
+    { name: '薰衣草 Lavender', r: 230, g: 230, b: 250 },
+    { name: '淡紫 Thistle', r: 216, g: 191, b: 216 },
+    { name: '李子色 Plum', r: 221, g: 160, b: 221 },
+    { name: '紫罗兰 Violet', r: 238, g: 130, b: 238 },
+    { name: '兰花色 Orchid', r: 218, g: 112, b: 214 },
+    { name: '中兰花色 MediumOrchid', r: 186, g: 85, b: 211 },
+    { name: '暗紫罗兰 DarkViolet', r: 148, g: 0, b: 211 },
+    { name: '蓝紫 BlueViolet', r: 138, g: 43, b: 226 },
+    { name: '暗洋红 DarkMagenta', r: 139, g: 0, b: 139 },
+    { name: '靛蓝 Indigo', r: 75, g: 0, b: 130 },
+    { name: '暗板岩蓝 DarkSlateBlue', r: 72, g: 61, b: 139 },
+    { name: '板岩蓝 SlateBlue', r: 106, g: 90, b: 205 },
+    { name: '中板岩蓝 MediumSlateBlue', r: 123, g: 104, b: 238 },
+    { name: '钢蓝色 SteelBlue', r: 70, g: 130, b: 180 },
+    { name: '天蓝 SkyBlue', r: 135, g: 206, b: 235 },
+    { name: '深天蓝 DeepSkyBlue', r: 0, g: 191, b: 255 },
+    { name: '浅天蓝 LightSkyBlue', r: 135, g: 206, b: 250 },
+    { name: '矢车菊蓝 CornflowerBlue', r: 100, g: 149, b: 237 },
+    { name: '道奇蓝 DodgerBlue', r: 30, g: 144, b: 255 },
+    { name: '皇家蓝 RoyalBlue', r: 65, g: 105, b: 225 },
+    { name: '中蓝 MediumBlue', r: 0, g: 0, b: 205 },
+    { name: '深蓝 DarkBlue', r: 0, g: 0, b: 139 },
+    { name: '午夜蓝 MidnightBlue', r: 25, g: 25, b: 112 },
+    { name: '浅钢蓝 LightSteelBlue', r: 176, g: 196, b: 222 },
+    { name: '浅蓝 LightBlue', r: 173, g: 216, b: 230 },
+    { name: '粉蓝 PowderBlue', r: 176, g: 224, b: 230 },
+    { name: '淡青色 PaleTurquoise', r: 175, g: 238, b: 238 },
+    { name: '浅青色 LightCyan', r: 224, g: 255, b: 255 },
+    { name: '深青色 DarkCyan', r: 0, g: 139, b: 139 },
+    { name: '水鸭色 Teal', r: 0, g: 128, b: 128 },
+    { name: '中绿宝石 MediumTurquoise', r: 72, g: 209, b: 204 },
+    { name: '绿宝石 Turquoise', r: 64, g: 224, b: 208 },
+    { name: '浅海绿 LightSeaGreen', r: 32, g: 178, b: 170 },
+    { name: '深岩灰 DarkSlateGray', r: 47, g: 79, b: 79 },
+    { name: '中碧绿 MediumAquamarine', r: 102, g: 205, b: 170 },
+    { name: '碧绿 Aquamarine', r: 127, g: 255, b: 212 },
+    { name: '暗绿 DarkGreen', r: 0, g: 100, b: 0 },
+    { name: '森林绿 ForestGreen', r: 34, g: 139, b: 34 },
+    { name: '海绿 SeaGreen', r: 46, g: 139, b: 87 },
+    { name: '中海绿 MediumSeaGreen', r: 60, g: 179, b: 113 },
+    { name: '春绿 SpringGreen', r: 0, g: 255, b: 127 },
+    { name: '中春绿 MediumSpringGreen', r: 0, g: 250, b: 154 },
+    { name: '浅绿 LightGreen', r: 144, g: 238, b: 144 },
+    { name: '淡绿 PaleGreen', r: 152, g: 251, b: 152 },
+    { name: '黄绿 YellowGreen', r: 154, g: 205, b: 50 },
+    { name: '草绿 LawnGreen', r: 124, g: 252, b: 0 },
+    { name: '查特酒绿 Chartreuse', r: 127, g: 255, b: 0 },
+    { name: '绿黄 GreenYellow', r: 173, g: 255, b: 47 },
+    { name: '橄榄褐 OliveDrab', r: 107, g: 142, b: 35 },
+    { name: '暗橄榄绿 DarkOliveGreen', r: 85, g: 107, b: 47 },
+    { name: '酸橙绿 Lime', r: 0, g: 255, b: 0 },
+    { name: '酸橙 LimeGreen', r: 50, g: 205, b: 50 },
+    { name: '深卡其 DarkKhaki', r: 189, g: 183, b: 107 },
+    { name: '卡其 Khaki', r: 240, g: 230, b: 140 },
+    { name: '淡金 PaleGoldenrod', r: 238, g: 232, b: 170 },
+    { name: '浅金黄 LightGoldenrodYellow', r: 250, g: 250, b: 210 },
+    { name: '柠檬绸 LemonChiffon', r: 255, g: 250, b: 205 },
+    { name: '浅黄 LightYellow', r: 255, g: 255, b: 224 },
+    { name: '玉米色 Cornsilk', r: 255, g: 248, b: 220 },
+    { name: '米色 Beige', r: 245, g: 245, b: 220 },
+    { name: '鹿皮色 Bisque', r: 255, g: 228, b: 196 },
+    { name: '纳瓦霍白 NavajoWhite', r: 255, g: 222, b: 173 },
+    { name: '小麦色 Wheat', r: 245, g: 222, b: 179 },
+    { name: '鹿色 BurlyWood', r: 222, g: 184, b: 135 },
+    { name: '棕褐色 Tan', r: 210, g: 180, b: 140 },
+    { name: '玫瑰色 RosyBrown', r: 188, g: 143, b: 143 },
+    { name: '沙色 SandyBrown', r: 244, g: 164, b: 96 },
+    { name: '秋麒麟 Goldenrod', r: 218, g: 165, b: 32 },
+    { name: '暗秋麒麟 DarkGoldenrod', r: 184, g: 134, b: 11 },
+    { name: '秘鲁色 Peru', r: 205, g: 133, b: 63 },
+    { name: '巧克力色 Chocolate', r: 210, g: 105, b: 30 },
+    { name: '鞍棕色 SaddleBrown', r: 139, g: 69, b: 19 },
+    { name: '赭色 Sienna', r: 160, g: 82, b: 45 },
+    { name: '棕色 Brown', r: 165, g: 42, b: 42 },
+    { name: '深棕 DarkBrown', r: 101, g: 55, b: 0 },
+    { name: '摩卡色 Mocha', r: 150, g: 100, b: 60 },
+    { name: '原木色 Wood', r: 180, g: 140, b: 100 },
+    { name: '赤陶色 Terracotta', r: 204, g: 102, b: 51 },
+    { name: '铜色 Copper', r: 184, g: 115, b: 51 },
+    { name: '暗灰 DarkGray', r: 169, g: 169, b: 169 },
+    { name: '灰 Gray', r: 128, g: 128, b: 128 },
+    { name: '暗灰 DimGray', r: 105, g: 105, b: 105 },
+    { name: '浅灰 LightGray', r: 211, g: 211, b: 211 },
+    { name: '亮钢蓝 LightSteelBlue', r: 176, g: 196, b: 222 },
+    { name: '石板灰 SlateGray', r: 112, g: 128, b: 144 },
+    { name: '暗石板灰 DarkSlateGray', r: 47, g: 79, b: 79 },
+    { name: '白烟 WhiteSmoke', r: 245, g: 245, b: 245 },
+    { name: '贝壳 Seashell', r: 255, g: 245, b: 238 },
+    { name: '老花色 OldLace', r: 253, g: 245, b: 230 },
+    { name: '花白 FloralWhite', r: 255, g: 250, b: 240 },
+    { name: '象牙色 Ivory', r: 255, g: 255, b: 240 },
+    { name: '古白 AntiqueWhite', r: 250, g: 235, b: 215 },
+    { name: '亚麻色 Linen', r: 250, g: 240, b: 230 },
+    { name: '薰衣草腮红 LavenderBlush', r: 255, g: 240, b: 245 },
+    { name: '淡粉 MistyRose', r: 255, g: 228, b: 225 },
+    { name: '茜色 Gainsboro', r: 220, g: 220, b: 220 },
+    { name: '桃色 PeachPuff', r: 255, g: 218, b: 185 },
+    { name: '浅鲑鱼 LightSalmon', r: 255, g: 160, b: 122 },
+    { name: '深鲑鱼 DarkSalmon', r: 233, g: 150, b: 122 },
+    { name: '橙红 Coral', r: 255, g: 127, b: 80 },
+    { name: '暗橙红 DarkCoral', r: 205, g: 91, b: 69 },
+    { name: '耐火砖 FireBrick', r: 178, g: 34, b: 34 },
+    { name: '深红 Crimson', r: 220, g: 20, b: 60 },
+    { name: '暗红 DarkRed', r: 139, g: 0, b: 0 },
+    { name: '猩红 Scarlet', r: 255, g: 36, b: 0 },
+    { name: '勃艮第酒红 Burgundy', r: 128, g: 0, b: 32 },
+    { name: '锈红 Rust', r: 183, g: 65, b: 14 },
+    { name: '朱红 Vermilion', r: 227, g: 66, b: 52 },
+    { name: '胭脂红 Carmine', r: 150, g: 0, b: 24 }
+  ];
+
+  function findColorName(r, g, b) {
+    let minDist = Infinity;
+    let best = null;
+    for (const c of COLOR_NAMES) {
+      const d = (c.r - r) ** 2 + (c.g - g) ** 2 + (c.b - b) ** 2;
+      if (d < minDist) {
+        minDist = d;
+        best = c;
+      }
+    }
+    return best && minDist < 60000 ? best.name : null;
+  }
+
+  function saveHistory() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+    } catch (_) {}
+  }
+
+  function loadHistory() {
+    try {
+      const data = localStorage.getItem(STORAGE_KEY);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed)) {
+          history.length = 0;
+          history.push(...parsed.slice(0, HISTORY_MAX));
+        }
+      }
+    } catch (_) {}
+  }
+
+  function saveSelected(hex, color) {
+    try {
+      localStorage.setItem(SELECTED_KEY, JSON.stringify({ hex, color }));
+    } catch (_) {}
+  }
+
+  function loadSelected() {
+    try {
+      const data = localStorage.getItem(SELECTED_KEY);
+      if (data) {
+        const parsed = JSON.parse(data);
+        if (parsed && parsed.hex && parsed.color) {
+          return parsed;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  magnifierCanvas.width = MAGNIFIER_SIZE;
+  magnifierCanvas.height = MAGNIFIER_SIZE;
 
   function init() {
+    loadHistory();
     setupCanvas();
 
     fileInput.addEventListener('change', onFileSelect);
@@ -54,10 +273,12 @@
     document.addEventListener('paste', onPaste);
 
     displayCanvas.addEventListener('click', onCanvasClick);
+    displayCanvas.addEventListener('dblclick', onDblClick);
     displayCanvas.addEventListener('mousedown', onMouseDown);
     displayCanvas.addEventListener('mousemove', onMouseMove);
     displayCanvas.addEventListener('mouseup', onMouseUp);
-    displayCanvas.addEventListener('mouseleave', onMouseUp);
+    displayCanvas.addEventListener('mouseleave', onMouseLeave);
+    displayCanvas.addEventListener('mouseenter', onMouseEnter);
 
     canvasWrapper.addEventListener('wheel', onWheel, { passive: false });
 
@@ -84,9 +305,23 @@
 
     clearHistoryBtn.addEventListener('click', () => {
       history = [];
+      saveHistory();
       renderHistory();
       showToast('已清空取色记录');
     });
+
+    renderHistory();
+    const restored = loadSelected();
+    if (restored) {
+      currentColor = restored.color;
+      const r = restored.color.r, g = restored.color.g, b = restored.color.b;
+      const hex = restored.hex;
+      colorSwatch.style.backgroundColor = hex;
+      swatchHex.textContent = hex.toUpperCase();
+      swatchHex.style.color = getContrastColor(restored.color);
+      hexValue.textContent = getColorString(restored.color, colorFormat);
+      rgbValue.textContent = `rgb(${r}, ${g}, ${b})`;
+    }
   }
 
   function setupCanvas() {
@@ -207,6 +442,7 @@
     zoomLevel = 1;
     placeholder.style.display = 'none';
     zoomLabel.hidden = false;
+    magnifier.hidden = false;
 
     fitImageToCanvas();
     render();
@@ -331,6 +567,17 @@
     }
   }
 
+  function onDblClick(e) {
+    if (!isImageLoaded) return;
+    if (zoomLevel !== 1) {
+      zoomLevel = 1;
+      fitImageToCanvas();
+      render();
+      updateStatus();
+      showToast('已重置缩放');
+    }
+  }
+
   function onMouseDown(e) {
     if (!isImageLoaded || mode !== 'region') return;
     const pos = getCanvasCoords(e);
@@ -350,6 +597,35 @@
       dragEnd = { x: pos.x, y: pos.y };
       render();
     }
+
+    if (inside) {
+      const ic = canvasToImage(pos.x, pos.y);
+      const color = getPixelColor(ic.x, ic.y);
+      if (color) {
+        lastHoverColor = color;
+        updateMagnifier(e, color, ic);
+        updateStatusHover(ic, color);
+      }
+    } else {
+      magnifier.hidden = false;
+      updateStatus();
+    }
+  }
+
+  function onMouseEnter() {
+    if (isImageLoaded) {
+      magnifier.hidden = false;
+    }
+  }
+
+  function onMouseLeave() {
+    if (isDragging && mode === 'region') {
+      isDragging = false;
+      dragStart = null;
+      dragEnd = null;
+      render();
+    }
+    magnifier.hidden = true;
   }
 
   function onMouseUp() {
@@ -434,16 +710,67 @@
     hexValue.textContent = getColorString(color, colorFormat);
     rgbValue.textContent = `rgb(${color.r}, ${color.g}, ${color.b})`;
 
+    const name = findColorName(color.r, color.g, color.b);
+    if (name) {
+      colorName.hidden = false;
+      colorNameValue.textContent = name;
+    } else {
+      colorName.hidden = true;
+    }
+
     copyBtn.querySelector('.btn-text').textContent = '复制色号';
     copyBtn.style.background = '';
 
     addHistory(hex, color);
+    saveSelected(hex, color);
     updateStatus();
   }
 
   function getContrastColor(color) {
     const lum = (0.299 * color.r + 0.587 * color.g + 0.114 * color.b) / 255;
     return lum > 0.5 ? '#1a1f2e' : '#e8eaed';
+  }
+
+  function updateMagnifier(e, color, ic) {
+    const rect = displayCanvas.getBoundingClientRect();
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+
+    magnifier.style.left = cx + 'px';
+    magnifier.style.top = cy + 'px';
+
+    const half = Math.floor(MAGNIFIER_SIZE / 2);
+    const imageData = offscreenCtx.getImageData(
+      Math.max(0, ic.x - half), Math.max(0, ic.y - half),
+      MAGNIFIER_SIZE, MAGNIFIER_SIZE
+    );
+
+    const data = imageData.data;
+    const len = imageData.width * imageData.height;
+
+    for (let i = 0; i < len; i++) {
+      const px = data[i * 4];
+      const py = data[i * 4 + 1];
+      const pz = data[i * 4 + 2];
+      const idx = i * 4;
+      data[idx] = px;
+      data[idx + 1] = py;
+      data[idx + 2] = pz;
+      data[idx + 3] = 255;
+    }
+
+    magnifierCtx.clearRect(0, 0, MAGNIFIER_SIZE, MAGNIFIER_SIZE);
+    magnifierCtx.putImageData(imageData, 0, 0);
+
+    const hex = rgbToHex(color.r, color.g, color.b);
+    magnifierHex.textContent = hex.toUpperCase();
+    magnifierCoord.textContent = `(${ic.x}, ${ic.y})`;
+  }
+
+  function updateStatusHover(ic, color) {
+    if (currentColor) return;
+    const hex = rgbToHex(color.r, color.g, color.b);
+    status.textContent = `(${ic.x}, ${ic.y}) · ${hex.toUpperCase()}`;
   }
 
   function showTooltip(cx, cy, color) {
@@ -462,12 +789,13 @@
   function addHistory(hex, color) {
     if (history.length > 0 && history[history.length - 1].hex === hex) return;
     history.push({ hex, color: { r: color.r, g: color.g, b: color.b } });
-    if (history.length > 20) history.shift();
+    if (history.length > HISTORY_MAX) history.shift();
+    saveHistory();
     renderHistory();
   }
 
   function renderHistory() {
-    historyCount.textContent = history.length;
+    historyCount.textContent = `${history.length}/${HISTORY_MAX}`;
     if (history.length === 0) {
       historyList.innerHTML = '<p class="empty-hint">暂无记录</p>';
       clearHistoryBtn.classList.add('hidden');
@@ -487,19 +815,29 @@
       del.addEventListener('click', e => {
         e.stopPropagation();
         history.splice(index, 1);
+        saveHistory();
         renderHistory();
       });
 
       wrapper.appendChild(del);
       wrapper.addEventListener('click', () => {
-        currentColor = { r: item.color.r, g: item.color.g, b: item.color.b };
+        const c = item.color;
+        currentColor = { r: c.r, g: c.g, b: c.b };
         colorSwatch.style.backgroundColor = item.hex;
         swatchHex.textContent = item.hex.toUpperCase();
-        swatchHex.style.color = getContrastColor(item.color);
-        hexValue.textContent = getColorString(item.color, colorFormat);
-        rgbValue.textContent = `rgb(${item.color.r}, ${item.color.g}, ${item.color.b})`;
+        swatchHex.style.color = getContrastColor(c);
+        hexValue.textContent = getColorString(c, colorFormat);
+        rgbValue.textContent = `rgb(${c.r}, ${c.g}, ${c.b})`;
+        const name = findColorName(c.r, c.g, c.b);
+        if (name) {
+          colorName.hidden = false;
+          colorNameValue.textContent = name;
+        } else {
+          colorName.hidden = true;
+        }
         copyBtn.querySelector('.btn-text').textContent = '复制色号';
         copyBtn.style.background = '';
+        saveSelected(item.hex, c);
       });
       historyList.appendChild(wrapper);
     });
@@ -618,7 +956,6 @@
   }
 
   function updateStatus() {
-    const modeLabel = mode === 'click' ? '点击取色' : '区域取色';
     if (!isImageLoaded) {
       status.textContent = '就绪';
       return;
@@ -626,7 +963,7 @@
 
     const parts = [
       `${offscreenCanvas.width}×${offscreenCanvas.height}`,
-      modeLabel
+      mode === 'click' ? '点击取色' : '区域取色'
     ];
 
     if (zoomLevel !== 1) {
