@@ -777,12 +777,10 @@
     const hex = rgbToHex(color.r, color.g, color.b);
     tooltipSwatch.style.backgroundColor = hex;
     tooltipHex.textContent = hex.toUpperCase();
-    colorTooltip.style.left = cx + 'px';
-    colorTooltip.style.top = cy + 'px';
-    colorTooltip.hidden = false;
+    colorTooltip.style.display = 'flex';
     clearTimeout(colorTooltip._hideTimer);
     colorTooltip._hideTimer = setTimeout(() => {
-      colorTooltip.hidden = true;
+      colorTooltip.style.display = 'none';
     }, 2000);
   }
 
