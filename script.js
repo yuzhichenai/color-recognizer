@@ -462,7 +462,7 @@
         dom.magnifier.style.display = 'flex';
         updateMag(e, color, ic);
         if (mode === 'eyedropper' || altHeld) {
-          selectColor(color);
+          selectColor(color, false);
           showTooltip(pos.x, pos.y, color);
           dom.status.textContent = `🔍 ${gcs(color, 'hex')} · (${ic.x}, ${ic.y})`;
         } else {
@@ -531,7 +531,8 @@
     ctx.fillText(`${Math.round(w / imageRect.scale)}×${Math.round(h / imageRect.scale)}`, x + 6, y - 6);
   }
 
-  function selectColor(color) {
+  function selectColor(color, saveToHistory) {
+    if (saveToHistory === undefined) saveToHistory = true;
     currentColor = color;
     const hex = rgb2h(color.r, color.g, color.b);
     dom.colorSwatch.style.backgroundColor = hex;
@@ -540,8 +541,10 @@
     updateColorDisplay(color);
     dom.copyBtn.querySelector('.btn-text').textContent = '复制色号';
     dom.copyBtn.style.background = '';
-    addHistory(hex, color);
-    ss(hex, color);
+    if (saveToHistory) {
+      addHistory(hex, color);
+      ss(hex, color);
+    }
     updateStatus();
   }
 
