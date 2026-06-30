@@ -7,11 +7,11 @@
 :root {
   --bg: #0a0e17;
   --bg-alt: #0d111c;
-  --surface: rgba(255, 255, 255, 0.04);
-  --surface-hover: rgba(255, 255, 255, 0.08);
-  --surface-active: rgba(255, 255, 255, 0.1);
-  --border: rgba(255, 255, 255, 0.06);
-  --border-hover: rgba(255, 255, 255, 0.12);
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-hover: rgba(255, 255, 255, 0.1);
+  --surface-active: rgba(255, 255, 255, 0.14);
+  --border: rgba(255, 255, 255, 0.1);
+  --border-hover: rgba(255, 255, 255, 0.18);
   --primary: #00e5ff;
   --primary-dim: rgba(0, 229, 255, 0.15);
   --accent: #ff6b35;
@@ -79,7 +79,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 12px 20px;
-  background: var(--surface);
+  background: #141a26;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   backdrop-filter: blur(20px);
@@ -255,7 +255,7 @@ body {
 }
 
 .panel-section {
-  background: var(--surface);
+  background: #141a26;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   backdrop-filter: blur(20px);
@@ -340,7 +340,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
-  background: var(--bg-alt);
+  background: #0d111c;
   border-radius: var(--radius-sm);
 }
 
@@ -480,7 +480,7 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 10px 20px;
-  background: var(--surface);
+  background: #141a26;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   backdrop-filter: blur(20px);
@@ -497,7 +497,7 @@ body {
 .mode-switch {
   display: flex;
   gap: 3px;
-  background: var(--bg-alt);
+  background: #0d111c;
   border-radius: var(--radius-sm);
   padding: 3px;
 }
