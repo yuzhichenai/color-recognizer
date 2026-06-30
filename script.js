@@ -442,7 +442,6 @@
     zoomLevel = 1;
     placeholder.style.display = 'none';
     zoomLabel.hidden = false;
-    magnifier.hidden = false;
 
     fitImageToCanvas();
     render();
@@ -607,15 +606,14 @@
         updateStatusHover(ic, color);
       }
     } else {
-      magnifier.hidden = false;
-      updateStatus();
+      magnifier.hidden = true;
     }
   }
 
-  function onMouseEnter() {
-    if (isImageLoaded) {
-      magnifier.hidden = false;
-    }
+  function onMouseEnter(e) {
+    if (!isImageLoaded) return;
+    const pos = getCanvasCoords(e);
+    magnifier.hidden = !isInsideImage(pos.x, pos.y);
   }
 
   function onMouseLeave() {
