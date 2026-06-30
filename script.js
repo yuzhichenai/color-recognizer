@@ -265,7 +265,7 @@
   magnifierCanvas.height = MAGNIFIER_SIZE;
 
   function init() {
-    magnifier.classList.remove('visible');
+    magnifier.style.display = 'none';
     loadHistory();
     setupCanvas();
 
@@ -602,19 +602,20 @@
       const ic = canvasToImage(pos.x, pos.y);
       const color = getPixelColor(ic.x, ic.y);
       if (color) {
+        magnifier.style.display = 'flex';
         lastHoverColor = color;
         updateMagnifier(e, color, ic);
         updateStatusHover(ic, color);
       }
     } else {
-      magnifier.classList.remove('visible');
+      magnifier.style.display = 'none';
     }
   }
 
   function onMouseEnter(e) {
     if (!isImageLoaded) return;
     const pos = getCanvasCoords(e);
-    magnifier.classList.toggle('visible', isInsideImage(pos.x, pos.y));
+    magnifier.style.display = isInsideImage(pos.x, pos.y) ? 'flex' : 'none';
   }
 
   function onMouseLeave() {
@@ -624,7 +625,7 @@
       dragEnd = null;
       render();
     }
-    magnifier.classList.remove('visible');
+    magnifier.style.display = 'none';
   }
 
   function onMouseUp() {
