@@ -10,14 +10,18 @@
   const swatchHex = document.getElementById('swatchHex');
   const hexValue = document.getElementById('hexValue');
   const rgbValue = document.getElementById('rgbValue');
+  const formatLabel = document.getElementById('formatLabel');
   const copyBtn = document.getElementById('copyBtn');
   const historyList = document.getElementById('historyList');
+  const historyCount = document.getElementById('historyCount');
+  const clearHistoryBtn = document.getElementById('clearHistoryBtn');
   const status = document.getElementById('status');
   const colorTooltip = document.getElementById('colorTooltip');
   const tooltipSwatch = document.getElementById('tooltipSwatch');
   const tooltipHex = document.getElementById('tooltipHex');
+  const zoomLabel = document.getElementById('zoomLabel');
+  const dropOverlay = document.getElementById('dropOverlay');
   const toast = document.getElementById('toast');
-  const historyCount = document.getElementById('historyCount');
   const modeBtns = document.querySelectorAll('.mode-btn');
 
   let sourceImage = null;
@@ -29,21 +33,24 @@
   let dragStart = null;
   let dragEnd = null;
   let history = [];
-  let imageRect = { x: 0, y: 0, w: 0, h: 0, scale: 1 };
+  let imageRect = { x: 0, y: 0, w: 0, h: 0, baseScale: 1, scale: 1 };
   let currentColor = null;
+  let zoomLevel = 1;
+  let colorFormat = 'hex';
+  let canvasW = 0;
+  let canvasH = 0;
+  let dragCounter = 0;
 
-  const CANVAS_W = 800;
-  const CANVAS_H = 600;
+  const MAX_IMAGE_SIZE = 4096;
+  const ZOOM_MIN = 0.1;
+  const ZOOM_MAX = 20;
+  const ZOOM_STEP = 0.1;
 
   function init() {
-    displayCanvas.width = CANVAS_W;
-    displayCanvas.height = CANVAS_H;
-    drawCheckerboard();
+    setupCanvas();
 
     fileInput.addEventListener('change', onFileSelect);
-
     pasteBtn.addEventListener('click', onPasteClick);
-
     document.addEventListener('paste', onPaste);
 
     displayCanvas.addEventListener('click', onCanvasClick);
@@ -52,43 +59,68 @@
     displayCanvas.addEventListener('mouseup', onMouseUp);
     displayCanvas.addEventListener('mouseleave', onMouseUp);
 
+    canvasWrapper.addEventListener('wheel', onWheel, { passive: false });
+
+    document.addEventListener('keydown', onKeyDown);
+
+    document.addEventListener('dragenter', onDocDragEnter);
+    document.addEventListener('dragover', onDocDragOver);
+    document.addEventListener('dragleave', onDocDragLeave);
+    document.addEventListener('drop', onDocDrop);
+
     modeBtns.forEach(btn => {
       btn.addEventListener('click', () => {
         modeBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         mode = btn.dataset.mode;
-        if (!isImageLoaded) return;
-        displayCanvas.style.cursor = 'crosshair';
+        updateStatus();
       });
     });
 
     copyBtn.addEventListener('click', copyColor);
 
-    canvasWrapper.addEventListener('dragover', e => {
-      e.preventDefault();
-      canvasWrapper.classList.add('dragover');
-    });
-    canvasWrapper.addEventListener('dragleave', () => {
-      canvasWrapper.classList.remove('dragover');
-    });
-    canvasWrapper.addEventListener('drop', e => {
-      e.preventDefault();
-      canvasWrapper.classList.remove('dragover');
-      const file = e.dataTransfer.files[0];
-      if (file && file.type.startsWith('image/')) {
-        loadImageFromFile(file);
-      }
+    document.getElementById('colorHexGroup').addEventListener('click', cycleFormat);
+    document.getElementById('colorRgbGroup').addEventListener('click', cycleFormat);
+
+    clearHistoryBtn.addEventListener('click', () => {
+      history = [];
+      renderHistory();
+      showToast('已清空取色记录');
     });
   }
 
-  function drawCheckerboard() {
-    const size = 10;
-    displayCtx.fillStyle = '#ffffff';
-    displayCtx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  function setupCanvas() {
+    const ro = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        const dpr = window.devicePixelRatio || 1;
+        const w = Math.floor(width * dpr);
+        const h = Math.floor(height * dpr);
+        if (w !== canvasW || h !== canvasH) {
+          canvasW = w;
+          canvasH = h;
+          displayCanvas.width = w;
+          displayCanvas.height = h;
+          if (isImageLoaded) {
+            fitImageToCanvas();
+            render();
+            updateStatus();
+          } else {
+            drawCheckerboard();
+          }
+        }
+      }
+    });
+    ro.observe(canvasWrapper);
+  }
 
+  function drawCheckerboard() {
+    displayCtx.fillStyle = '#ffffff';
+    displayCtx.fillRect(0, 0, canvasW, canvasH);
     displayCtx.fillStyle = '#e8e8e8';
-    for (let y = 0; y < CANVAS_H; y += size) {
-      for (let x = 0; x < CANVAS_W; x += size) {
+    const size = Math.max(8, Math.floor(canvasW / 80));
+    for (let y = 0; y < canvasH; y += size) {
+      for (let x = 0; x < canvasW; x += size) {
         if ((Math.floor(x / size) + Math.floor(y / size)) % 2 === 0) {
           displayCtx.fillRect(x, y, size, size);
         }
@@ -156,38 +188,59 @@
   function processImage(img) {
     sourceImage = img;
 
+    let sw = img.width;
+    let sh = img.height;
+
+    if (sw > MAX_IMAGE_SIZE || sh > MAX_IMAGE_SIZE) {
+      const ratio = Math.min(MAX_IMAGE_SIZE / sw, MAX_IMAGE_SIZE / sh);
+      sw = Math.round(sw * ratio);
+      sh = Math.round(sh * ratio);
+    }
+
     offscreenCanvas = document.createElement('canvas');
-    offscreenCanvas.width = img.width;
-    offscreenCanvas.height = img.height;
+    offscreenCanvas.width = sw;
+    offscreenCanvas.height = sh;
     offscreenCtx = offscreenCanvas.getContext('2d');
-    offscreenCtx.drawImage(img, 0, 0);
+    offscreenCtx.drawImage(img, 0, 0, sw, sh);
 
     isImageLoaded = true;
+    zoomLevel = 1;
     placeholder.style.display = 'none';
+    zoomLabel.hidden = false;
 
     fitImageToCanvas();
     render();
-    setStatus(`已加载: ${img.width}×${img.height} 像素`);
+    updateStatus();
     displayCanvas.style.cursor = 'crosshair';
   }
 
   function fitImageToCanvas() {
-    const iw = sourceImage.width;
-    const ih = sourceImage.height;
-    const scale = Math.min(CANVAS_W / iw, CANVAS_H / ih, 1);
+    const iw = offscreenCanvas.width;
+    const ih = offscreenCanvas.height;
+    const baseScale = Math.min(canvasW / iw, canvasH / ih, 1);
+    const scale = baseScale * zoomLevel;
     const dw = iw * scale;
     const dh = ih * scale;
-    const dx = (CANVAS_W - dw) / 2;
-    const dy = (CANVAS_H - dh) / 2;
-    imageRect = { x: dx, y: dy, w: dw, h: dh, scale };
+    const dx = (canvasW - dw) / 2;
+    const dy = (canvasH - dh) / 2;
+    imageRect = { x: dx, y: dy, w: dw, h: dh, baseScale, scale };
   }
 
   function render() {
     drawCheckerboard();
     if (!isImageLoaded) return;
-    displayCtx.drawImage(sourceImage, imageRect.x, imageRect.y, imageRect.w, imageRect.h);
+    displayCtx.save();
+    displayCtx.drawImage(offscreenCanvas, imageRect.x, imageRect.y, imageRect.w, imageRect.h);
     if (isDragging && dragStart && dragEnd && mode === 'region') {
       drawSelectionRect();
+    }
+    displayCtx.restore();
+
+    if (zoomLevel !== 1) {
+      zoomLabel.textContent = `${Math.round(zoomLevel * 100)}%`;
+      zoomLabel.hidden = false;
+    } else {
+      zoomLabel.hidden = true;
     }
   }
 
@@ -205,8 +258,8 @@
   function getCanvasCoords(e) {
     const rect = displayCanvas.getBoundingClientRect();
     return {
-      x: (e.clientX - rect.left) * (CANVAS_W / rect.width),
-      y: (e.clientY - rect.top) * (CANVAS_H / rect.height)
+      x: (e.clientX - rect.left) * (canvasW / rect.width),
+      y: (e.clientY - rect.top) * (canvasH / rect.height)
     };
   }
 
@@ -220,6 +273,50 @@
 
   function rgbToHex(r, g, b) {
     return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+  }
+
+  function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, s = 0, l = (max + min) / 2;
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+        case g: h = ((b - r) / d + 2) / 6; break;
+        case b: h = ((r - g) / d + 4) / 6; break;
+      }
+    }
+    return {
+      h: Math.round(h * 360),
+      s: Math.round(s * 100),
+      l: Math.round(l * 100)
+    };
+  }
+
+  function getColorString(color, format) {
+    switch (format) {
+      case 'hex': return rgbToHex(color.r, color.g, color.b).toUpperCase();
+      case 'rgb': return `rgb(${color.r}, ${color.g}, ${color.b})`;
+      case 'hsl': {
+        const hsl = rgbToHsl(color.r, color.g, color.b);
+        return `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
+      }
+    }
+  }
+
+  const formatLabels = { hex: 'HEX', rgb: 'RGB', hsl: 'HSL' };
+
+  function cycleFormat() {
+    const keys = ['hex', 'rgb', 'hsl'];
+    const idx = keys.indexOf(colorFormat);
+    colorFormat = keys[(idx + 1) % keys.length];
+    formatLabel.textContent = formatLabels[colorFormat];
+    if (currentColor) {
+      hexValue.textContent = getColorString(currentColor, colorFormat);
+    }
+    updateStatus();
   }
 
   function onCanvasClick(e) {
@@ -312,20 +409,17 @@
     const w = Math.abs(dragEnd.x - dragStart.x);
     const h = Math.abs(dragEnd.y - dragStart.y);
 
-    displayCtx.fillStyle = 'rgba(108, 92, 231, 0.08)';
+    displayCtx.fillStyle = 'rgba(0, 229, 255, 0.06)';
     displayCtx.fillRect(x, y, w, h);
-
-    displayCtx.strokeStyle = '#6c5ce7';
+    displayCtx.strokeStyle = '#00e5ff';
     displayCtx.lineWidth = 2;
     displayCtx.strokeRect(x, y, w, h);
-
     displayCtx.strokeStyle = '#ffffff';
     displayCtx.lineWidth = 1;
     displayCtx.setLineDash([4, 4]);
     displayCtx.strokeRect(x, y, w, h);
     displayCtx.setLineDash([]);
-
-    displayCtx.fillStyle = '#6c5ce7';
+    displayCtx.fillStyle = '#00e5ff';
     displayCtx.font = '12px -apple-system, sans-serif';
     displayCtx.fillText(`${Math.round(w / imageRect.scale)}×${Math.round(h / imageRect.scale)}`, x + 6, y - 6);
   }
@@ -333,19 +427,18 @@
   function selectColor(color) {
     currentColor = color;
     const hex = rgbToHex(color.r, color.g, color.b);
-    const rgb = `rgb(${color.r}, ${color.g}, ${color.b})`;
 
     colorSwatch.style.backgroundColor = hex;
     swatchHex.textContent = hex.toUpperCase();
     swatchHex.style.color = getContrastColor(color);
-    hexValue.textContent = hex.toUpperCase();
-    rgbValue.textContent = rgb;
+    hexValue.textContent = getColorString(color, colorFormat);
+    rgbValue.textContent = `rgb(${color.r}, ${color.g}, ${color.b})`;
 
     copyBtn.querySelector('.btn-text').textContent = '复制色号';
     copyBtn.style.background = '';
 
     addHistory(hex, color);
-    setStatus(`已取色: ${hex.toUpperCase()}`);
+    updateStatus();
   }
 
   function getContrastColor(color) {
@@ -377,39 +470,52 @@
     historyCount.textContent = history.length;
     if (history.length === 0) {
       historyList.innerHTML = '<p class="empty-hint">暂无记录</p>';
+      clearHistoryBtn.classList.add('hidden');
       return;
     }
+    clearHistoryBtn.classList.remove('hidden');
     historyList.innerHTML = '';
-    history.forEach(item => {
-      const el = document.createElement('div');
-      el.className = 'history-item';
-      el.style.backgroundColor = item.hex;
-      el.dataset.hex = item.hex.toUpperCase();
-      el.addEventListener('click', () => {
+    history.forEach((item, index) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'history-item';
+      wrapper.style.backgroundColor = item.hex;
+      wrapper.dataset.hex = item.hex.toUpperCase();
+
+      const del = document.createElement('button');
+      del.className = 'delete-btn';
+      del.textContent = '×';
+      del.addEventListener('click', e => {
+        e.stopPropagation();
+        history.splice(index, 1);
+        renderHistory();
+      });
+
+      wrapper.appendChild(del);
+      wrapper.addEventListener('click', () => {
+        currentColor = { r: item.color.r, g: item.color.g, b: item.color.b };
         colorSwatch.style.backgroundColor = item.hex;
         swatchHex.textContent = item.hex.toUpperCase();
         swatchHex.style.color = getContrastColor(item.color);
-        hexValue.textContent = item.hex.toUpperCase();
+        hexValue.textContent = getColorString(item.color, colorFormat);
         rgbValue.textContent = `rgb(${item.color.r}, ${item.color.g}, ${item.color.b})`;
-        currentColor = item.color;
         copyBtn.querySelector('.btn-text').textContent = '复制色号';
         copyBtn.style.background = '';
       });
-      historyList.appendChild(el);
+      historyList.appendChild(wrapper);
     });
   }
 
   function copyColor() {
-    const hex = hexValue.textContent;
-    if (hex === '------' || !currentColor) {
+    const text = hexValue.textContent;
+    if (!text || text === '------' || !currentColor) {
       setStatus('还没有取色');
       return;
     }
-    navigator.clipboard.writeText(hex).then(() => {
+    navigator.clipboard.writeText(text).then(() => {
       const btnText = copyBtn.querySelector('.btn-text');
       btnText.textContent = '✅ 已复制';
       copyBtn.style.background = '#0d7377';
-      setStatus(`已复制: ${hex}`);
+      setStatus(`已复制: ${text}`);
       setTimeout(() => {
         btnText.textContent = '复制色号';
         copyBtn.style.background = '';
@@ -417,6 +523,121 @@
     }).catch(() => {
       setStatus('复制失败，请手动复制');
     });
+  }
+
+  function onWheel(e) {
+    if (!isImageLoaded) return;
+    e.preventDefault();
+
+    const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
+    const newZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoomLevel + delta));
+
+    if (newZoom !== zoomLevel) {
+      zoomLevel = newZoom;
+      fitImageToCanvas();
+      render();
+      updateStatus();
+    }
+  }
+
+  function onKeyDown(e) {
+    if (e.key === 'Escape') {
+      if (isDragging) {
+        isDragging = false;
+        dragStart = null;
+        dragEnd = null;
+        render();
+      }
+      return;
+    }
+
+    if (!isImageLoaded) return;
+
+    if (e.key === '+' || e.key === '=') {
+      e.preventDefault();
+      const newZoom = Math.min(ZOOM_MAX, zoomLevel + ZOOM_STEP);
+      if (newZoom !== zoomLevel) {
+        zoomLevel = newZoom;
+        fitImageToCanvas();
+        render();
+        updateStatus();
+      }
+      return;
+    }
+
+    if (e.key === '-') {
+      e.preventDefault();
+      const newZoom = Math.max(ZOOM_MIN, zoomLevel - ZOOM_STEP);
+      if (newZoom !== zoomLevel) {
+        zoomLevel = newZoom;
+        fitImageToCanvas();
+        render();
+        updateStatus();
+      }
+      return;
+    }
+
+    if (e.key === 'c' || e.key === 'C') {
+      if (!e.ctrlKey && !e.metaKey) {
+        copyColor();
+      }
+    }
+  }
+
+  function onDocDragEnter(e) {
+    e.preventDefault();
+    dragCounter++;
+    if (dragCounter === 1) {
+      dropOverlay.classList.add('active');
+    }
+  }
+
+  function onDocDragOver(e) {
+    e.preventDefault();
+  }
+
+  function onDocDragLeave(e) {
+    e.preventDefault();
+    dragCounter--;
+    if (dragCounter <= 0) {
+      dragCounter = 0;
+      dropOverlay.classList.remove('active');
+    }
+  }
+
+  function onDocDrop(e) {
+    e.preventDefault();
+    dragCounter = 0;
+    dropOverlay.classList.remove('active');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      loadImageFromFile(file);
+    } else {
+      showToast('请拖入图片文件');
+    }
+  }
+
+  function updateStatus() {
+    const modeLabel = mode === 'click' ? '点击取色' : '区域取色';
+    if (!isImageLoaded) {
+      status.textContent = '就绪';
+      return;
+    }
+
+    const parts = [
+      `${offscreenCanvas.width}×${offscreenCanvas.height}`,
+      modeLabel
+    ];
+
+    if (zoomLevel !== 1) {
+      parts.push(`${Math.round(zoomLevel * 100)}%`);
+    }
+
+    if (currentColor) {
+      parts.push(getColorString(currentColor, colorFormat));
+    }
+
+    status.textContent = parts.join(' · ');
   }
 
   function setStatus(msg) {
