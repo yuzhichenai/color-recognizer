@@ -247,9 +247,6 @@ kbd {
 
 .color-tooltip {
   position: absolute;
-  left: 50%;
-  bottom: 50%;
-  transform: translate(-50%, 60px);
   display: none;
   align-items: center;
   gap: 6px;

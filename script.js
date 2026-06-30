@@ -777,6 +777,15 @@
     const hex = rgbToHex(color.r, color.g, color.b);
     tooltipSwatch.style.backgroundColor = hex;
     tooltipHex.textContent = hex.toUpperCase();
+    const wrapperRect = canvasWrapper.getBoundingClientRect();
+    const canvasRect = displayCanvas.getBoundingClientRect();
+    const offsetX = canvasRect.left - wrapperRect.left;
+    const offsetY = canvasRect.top - wrapperRect.top;
+    const wrapperW = wrapperRect.width;
+    const wrapperH = wrapperRect.height;
+    colorTooltip.style.left = (wrapperW / 2) + 'px';
+    colorTooltip.style.top = (wrapperH * 0.6) + 'px';
+    colorTooltip.style.transform = 'translate(-50%, -50%)';
     colorTooltip.style.display = 'flex';
     clearTimeout(colorTooltip._hideTimer);
     colorTooltip._hideTimer = setTimeout(() => {
