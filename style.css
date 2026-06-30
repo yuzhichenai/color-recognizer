@@ -312,7 +312,7 @@ kbd {
   display: none;
 }
 
-.magnifier:not([hidden]) {
+.magnifier.visible {
   display: flex;
 }
 

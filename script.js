@@ -265,6 +265,7 @@
   magnifierCanvas.height = MAGNIFIER_SIZE;
 
   function init() {
+    magnifier.classList.remove('visible');
     loadHistory();
     setupCanvas();
 
@@ -606,14 +607,14 @@
         updateStatusHover(ic, color);
       }
     } else {
-      magnifier.hidden = true;
+      magnifier.classList.remove('visible');
     }
   }
 
   function onMouseEnter(e) {
     if (!isImageLoaded) return;
     const pos = getCanvasCoords(e);
-    magnifier.hidden = !isInsideImage(pos.x, pos.y);
+    magnifier.classList.toggle('visible', isInsideImage(pos.x, pos.y));
   }
 
   function onMouseLeave() {
@@ -623,7 +624,7 @@
       dragEnd = null;
       render();
     }
-    magnifier.hidden = true;
+    magnifier.classList.remove('visible');
   }
 
   function onMouseUp() {
