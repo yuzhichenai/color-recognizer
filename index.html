@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>颜色识别器</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <div class="header-inner">
+        <h1 class="logo">🎨 颜色识别器</h1>
+        <p class="subtitle">上传图片，点击取色，一键复制</p>
+      </div>
+    </header>
+
+    <div class="toolbar">
+      <label class="btn btn-primary" id="uploadBtn">
+        <span class="btn-icon">📁</span>
+        上传图片
+        <input type="file" id="fileInput" accept="image/*" hidden>
+      </label>
+      <button class="btn btn-secondary" id="pasteBtn">
+        <span class="btn-icon">📋</span>
+        从剪贴板粘贴
+      </button>
+    </div>
+
+    <main class="main">
+      <div class="canvas-area">
+        <div class="canvas-wrapper" id="canvasWrapper">
+          <canvas id="mainCanvas"></canvas>
+          <div class="placeholder" id="placeholder">
+            <div class="placeholder-icon">🖼️</div>
+            <p class="placeholder-text">拖拽图片到此处，或点击上方按钮上传</p>
+            <p class="placeholder-hint">支持 JPG、PNG、GIF、WebP 格式</p>
+          </div>
+          <div class="color-tooltip" id="colorTooltip" hidden>
+            <div class="tooltip-swatch" id="tooltipSwatch"></div>
+            <span class="tooltip-hex" id="tooltipHex">#000000</span>
+          </div>
+        </div>
+      </div>
+
+      <aside class="panel">
+        <section class="panel-section current-color-section">
+          <h3 class="panel-title">✦ 当前颜色</h3>
+          <div class="color-display" id="colorDisplay">
+            <div class="color-swatch" id="colorSwatch">
+              <span class="swatch-hex" id="swatchHex">?</span>
+            </div>
+            <div class="color-info">
+              <div class="color-hex">
+                <span class="label">HEX</span>
+                <span class="value" id="hexValue">------</span>
+              </div>
+              <div class="color-rgb">
+                <span class="label">RGB</span>
+                <span class="value" id="rgbValue">---, ---, ---</span>
+              </div>
+              <button class="btn btn-copy" id="copyBtn">
+                <span class="btn-icon">📋</span>
+                <span class="btn-text">复制色号</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <h3 class="panel-title">📋 取色记录</h3>
+          <div class="history-list" id="historyList">
+            <p class="empty-hint">还没有取色记录</p>
+          </div>
+        </section>
+      </aside>
+    </main>
+
+    <footer class="footer">
+      <div class="mode-switch">
+        <button class="mode-btn active" data-mode="click">
+          <span class="mode-dot">●</span> 点击取色
+        </button>
+        <button class="mode-btn" data-mode="region">
+          <span class="mode-dot">▣</span> 区域取色
+        </button>
+      </div>
+      <div class="status" id="status">就绪，请上传图片</div>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
