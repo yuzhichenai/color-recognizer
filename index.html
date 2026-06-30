@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>颜色识别器</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <link rel="stylesheet" href="style.css?v=1.2.3b">
+  <link rel="stylesheet" href="style.css?v=1.3.0">
 </head>
 <body>
   <div class="app">
@@ -13,11 +13,12 @@
       <div class="topbar-left">
         <span class="logo-mark">🎨</span>
         <span class="logo-text">颜色识别器</span>
-        <span class="logo-badge">v1.2.3</span>
+        <span class="logo-badge">v1.3.0</span>
       </div>
       <div class="topbar-right">
         <span class="status-dot"></span>
         <span class="status-text" id="status">就绪</span>
+        <button class="btn-icon-only" id="helpBtn" title="快捷键帮助">?</button>
       </div>
     </header>
 
@@ -41,10 +42,10 @@
               <span class="shortcut"><kbd>Ctrl+V</kbd> 粘贴</span>
               <span class="shortcut"><kbd>+</kbd><kbd>-</kbd> 缩放</span>
               <span class="shortcut"><kbd>C</kbd> 复制色号</span>
-              <span class="shortcut"><kbd>双击</kbd> 重置缩放</span>
+              <span class="shortcut"><kbd>?</kbd> 快捷键</span>
             </div>
           </div>
-          <div class="color-tooltip" id="colorTooltip" hidden>
+          <div class="color-tooltip" id="colorTooltip">
             <span class="tooltip-swatch" id="tooltipSwatch"></span>
             <span class="tooltip-hex" id="tooltipHex">#000000</span>
           </div>
@@ -70,25 +71,44 @@
               </svg>
             </div>
             <div class="color-details">
-              <div class="color-value-group" id="colorHexGroup">
-                <span class="color-label" id="formatLabel">HEX</span>
-                <span class="color-value mono" id="hexValue">------</span>
+              <div class="color-row">
+                <span class="color-row-label">HEX</span>
+                <span class="color-row-value mono" id="hexValue">------</span>
+                <button class="copy-mini" data-format="hex" title="复制 HEX">📋</button>
               </div>
-              <div class="color-value-group" id="colorRgbGroup">
-                <span class="color-label">&nbsp;</span>
-                <span class="color-value mono" id="rgbValue">---, ---, ---</span>
+              <div class="color-row">
+                <span class="color-row-label">RGB</span>
+                <span class="color-row-value mono" id="rgbValue">---, ---, ---</span>
+                <button class="copy-mini" data-format="rgb" title="复制 RGB">📋</button>
+              </div>
+              <div class="color-row">
+                <span class="color-row-label">HSL</span>
+                <span class="color-row-value mono" id="hslValue">---, ---, ---</span>
+                <button class="copy-mini" data-format="hsl" title="复制 HSL">📋</button>
               </div>
               <div class="color-name" id="colorName" hidden>
                 <span class="color-name-label">🏷️</span>
                 <span class="color-name-value" id="colorNameValue"></span>
               </div>
-              <button class="btn-copy" id="copyBtn">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <rect x="3" y="5" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
-                  <path d="M5 5V3.5A1.5 1.5 0 0 1 6.5 2h5A1.5 1.5 0 0 1 13 3.5V11" stroke="currentColor" stroke-width="1.2"/>
-                </svg>
-                <span class="btn-text">复制色号</span>
-              </button>
+              <button class="btn-copy" id="copyBtn"><span class="btn-text">复制色号</span></button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel-section palette-section" id="paletteSection" hidden>
+          <h3 class="panel-title">色彩搭配</h3>
+          <div class="palette-grid">
+            <div class="palette-card" id="paletteComplementary">
+              <span class="palette-label">互补</span>
+              <div class="palette-colors"></div>
+            </div>
+            <div class="palette-card" id="paletteAnalogous">
+              <span class="palette-label">近似</span>
+              <div class="palette-colors"></div>
+            </div>
+            <div class="palette-card" id="paletteTriadic">
+              <span class="palette-label">三角</span>
+              <div class="palette-colors"></div>
             </div>
           </div>
         </section>
@@ -118,6 +138,12 @@
             区域取色
           </button>
         </div>
+        <div class="sample-picker" id="samplePicker">
+          <label class="sample-label" title="采样精度">网格</label>
+          <button class="sample-btn active" data-size="3">3×3</button>
+          <button class="sample-btn" data-size="5">5×5</button>
+          <button class="sample-btn" data-size="7">7×7</button>
+        </div>
       </div>
       <div class="bottombar-right">
         <label class="btn-action" id="uploadBtn">
@@ -136,8 +162,32 @@
           </svg>
           粘贴
         </button>
+        <button class="btn-action" id="resetBtn" title="重置缩放">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M2 8a6 6 0 0 1 11.5-3M14 8a6 6 0 0 1-11.5 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M14 2v4h-4M2 14v-4h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
       </div>
     </footer>
+  </div>
+
+  <div class="help-modal" id="helpModal" hidden>
+    <div class="help-modal-backdrop"></div>
+    <div class="help-modal-content">
+      <h2>⌨️ 快捷键</h2>
+      <div class="help-grid">
+        <div class="help-row"><kbd>Ctrl+V</kbd><span>粘贴图片</span></div>
+        <div class="help-row"><kbd>+</kbd><span>放大</span></div>
+        <div class="help-row"><kbd>-</kbd><span>缩小</span></div>
+        <div class="help-row"><kbd>0</kbd><span>重置缩放 100%</span></div>
+        <div class="help-row"><kbd>C</kbd><span>复制色号</span></div>
+        <div class="help-row"><kbd>双击</kbd><span>重置缩放</span></div>
+        <div class="help-row"><kbd>Esc</kbd><span>取消选区 / 关闭帮助</span></div>
+        <div class="help-row"><kbd>?</kbd><span>打开本面板</span></div>
+      </div>
+      <button class="btn-copy" id="closeHelpBtn">知道了</button>
+    </div>
   </div>
 
   <div class="drop-overlay" id="dropOverlay">
