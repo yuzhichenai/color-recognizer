@@ -4,89 +4,120 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>颜色识别器</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="app">
-    <header class="header">
-      <div class="header-inner">
-        <h1 class="logo">🎨 颜色识别器</h1>
-        <p class="subtitle">上传图片，点击取色，一键复制</p>
+    <header class="topbar">
+      <div class="topbar-left">
+        <span class="logo-mark">🎨</span>
+        <span class="logo-text">颜色识别器</span>
+        <span class="logo-badge">v1.0.0</span>
+      </div>
+      <div class="topbar-right">
+        <span class="status-dot"></span>
+        <span class="status-text" id="status">就绪</span>
       </div>
     </header>
-
-    <div class="toolbar">
-      <label class="btn btn-primary" id="uploadBtn">
-        <span class="btn-icon">📁</span>
-        上传图片
-        <input type="file" id="fileInput" accept="image/*" hidden>
-      </label>
-      <button class="btn btn-secondary" id="pasteBtn">
-        <span class="btn-icon">📋</span>
-        从剪贴板粘贴
-      </button>
-    </div>
 
     <main class="main">
       <div class="canvas-area">
         <div class="canvas-wrapper" id="canvasWrapper">
           <canvas id="mainCanvas"></canvas>
           <div class="placeholder" id="placeholder">
-            <div class="placeholder-icon">🖼️</div>
-            <p class="placeholder-text">拖拽图片到此处，或点击上方按钮上传</p>
-            <p class="placeholder-hint">支持 JPG、PNG、GIF、WebP 格式</p>
+            <div class="placeholder-icon">
+              <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+                <rect x="8" y="12" width="48" height="40" rx="4" stroke="currentColor" stroke-width="2" stroke-dasharray="4 4"/>
+                <circle cx="24" cy="28" r="4" fill="currentColor" opacity="0.6"/>
+                <circle cx="40" cy="26" r="6" fill="currentColor" opacity="0.4"/>
+                <circle cx="32" cy="38" r="8" fill="currentColor" opacity="0.3"/>
+                <path d="M8 44 L22 30 L30 38 L44 24 L56 36" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <p class="placeholder-text">拖拽图片到此处</p>
+            <p class="placeholder-hint">或使用上方按钮上传 · 支持 JPG / PNG / GIF / WebP</p>
           </div>
           <div class="color-tooltip" id="colorTooltip" hidden>
-            <div class="tooltip-swatch" id="tooltipSwatch"></div>
+            <span class="tooltip-swatch" id="tooltipSwatch"></span>
             <span class="tooltip-hex" id="tooltipHex">#000000</span>
           </div>
         </div>
       </div>
 
       <aside class="panel">
-        <section class="panel-section current-color-section">
-          <h3 class="panel-title">✦ 当前颜色</h3>
-          <div class="color-display" id="colorDisplay">
-            <div class="color-swatch" id="colorSwatch">
+        <section class="panel-section color-section">
+          <div class="color-showcase">
+            <div class="color-ring" id="colorSwatch">
               <span class="swatch-hex" id="swatchHex">?</span>
+              <svg class="ring-deco" viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="54" fill="none" stroke="currentColor" stroke-width="1" opacity="0.15"/>
+                <circle cx="60" cy="60" r="46" fill="none" stroke="currentColor" stroke-width="0.5" opacity="0.1"/>
+              </svg>
             </div>
-            <div class="color-info">
-              <div class="color-hex">
-                <span class="label">HEX</span>
-                <span class="value" id="hexValue">------</span>
+            <div class="color-details">
+              <div class="color-value-group">
+                <span class="color-label">HEX</span>
+                <span class="color-value mono" id="hexValue">------</span>
               </div>
-              <div class="color-rgb">
-                <span class="label">RGB</span>
-                <span class="value" id="rgbValue">---, ---, ---</span>
+              <div class="color-value-group">
+                <span class="color-label">RGB</span>
+                <span class="color-value mono" id="rgbValue">---, ---, ---</span>
               </div>
-              <button class="btn btn-copy" id="copyBtn">
-                <span class="btn-icon">📋</span>
+              <button class="btn-copy" id="copyBtn">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                  <rect x="3" y="5" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+                  <path d="M5 5V3.5A1.5 1.5 0 0 1 6.5 2h5A1.5 1.5 0 0 1 13 3.5V11" stroke="currentColor" stroke-width="1.2"/>
+                </svg>
                 <span class="btn-text">复制色号</span>
               </button>
             </div>
           </div>
         </section>
 
-        <section class="panel-section">
-          <h3 class="panel-title">📋 取色记录</h3>
+        <section class="panel-section history-section">
+          <div class="section-header">
+            <h3 class="panel-title">取色记录</h3>
+            <span class="section-badge" id="historyCount">0</span>
+          </div>
           <div class="history-list" id="historyList">
-            <p class="empty-hint">还没有取色记录</p>
+            <p class="empty-hint">暂无记录</p>
           </div>
         </section>
       </aside>
     </main>
 
-    <footer class="footer">
-      <div class="mode-switch">
-        <button class="mode-btn active" data-mode="click">
-          <span class="mode-dot">●</span> 点击取色
-        </button>
-        <button class="mode-btn" data-mode="region">
-          <span class="mode-dot">▣</span> 区域取色
+    <footer class="bottombar">
+      <div class="bottombar-left">
+        <div class="mode-switch">
+          <button class="mode-btn active" data-mode="click">
+            <span class="mode-indicator"></span>
+            点击取色
+          </button>
+          <button class="mode-btn" data-mode="region">
+            <span class="mode-indicator"></span>
+            区域取色
+          </button>
+        </div>
+      </div>
+      <div class="bottombar-right">
+        <input type="file" id="fileInput" accept="image/*" hidden>
+        <label class="btn-action" id="uploadBtn">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M8 2v10M3 7l5-5 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M2 12v1.5A1.5 1.5 0 0 0 3.5 15h9a1.5 1.5 0 0 0 1.5-1.5V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          上传
+        </label>
+        <button class="btn-action" id="pasteBtn">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <rect x="3" y="1" width="10" height="14" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+            <path d="M6 1V2.5A.5.5 0 0 0 6.5 3h3a.5.5 0 0 0 .5-.5V1" stroke="currentColor" stroke-width="1.2"/>
+            <path d="M5 7h6M5 9.5h4M5 12h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+          粘贴
         </button>
       </div>
-      <div class="status" id="status">就绪，请上传图片</div>
-      <span class="version">v1.0.0</span>
     </footer>
   </div>
 

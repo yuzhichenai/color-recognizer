@@ -17,6 +17,7 @@
   const tooltipSwatch = document.getElementById('tooltipSwatch');
   const tooltipHex = document.getElementById('tooltipHex');
   const toast = document.getElementById('toast');
+  const historyCount = document.getElementById('historyCount');
   const modeBtns = document.querySelectorAll('.mode-btn');
 
   let sourceImage = null;
@@ -341,7 +342,7 @@
     rgbValue.textContent = rgb;
 
     copyBtn.querySelector('.btn-text').textContent = '复制色号';
-    copyBtn.style.background = '#00b894';
+    copyBtn.style.background = '';
 
     addHistory(hex, color);
     setStatus(`已取色: ${hex.toUpperCase()}`);
@@ -349,7 +350,7 @@
 
   function getContrastColor(color) {
     const lum = (0.299 * color.r + 0.587 * color.g + 0.114 * color.b) / 255;
-    return lum > 0.5 ? '#2d3436' : '#ffffff';
+    return lum > 0.5 ? '#1a1f2e' : '#e8eaed';
   }
 
   function showTooltip(cx, cy, color) {
@@ -373,8 +374,9 @@
   }
 
   function renderHistory() {
+    historyCount.textContent = history.length;
     if (history.length === 0) {
-      historyList.innerHTML = '<p class="empty-hint">还没有取色记录</p>';
+      historyList.innerHTML = '<p class="empty-hint">暂无记录</p>';
       return;
     }
     historyList.innerHTML = '';
@@ -382,7 +384,7 @@
       const el = document.createElement('div');
       el.className = 'history-item';
       el.style.backgroundColor = item.hex;
-      el.title = item.hex.toUpperCase();
+      el.dataset.hex = item.hex.toUpperCase();
       el.addEventListener('click', () => {
         colorSwatch.style.backgroundColor = item.hex;
         swatchHex.textContent = item.hex.toUpperCase();
@@ -391,7 +393,7 @@
         rgbValue.textContent = `rgb(${item.color.r}, ${item.color.g}, ${item.color.b})`;
         currentColor = item.color;
         copyBtn.querySelector('.btn-text').textContent = '复制色号';
-        copyBtn.style.background = '#00b894';
+        copyBtn.style.background = '';
       });
       historyList.appendChild(el);
     });
@@ -406,11 +408,11 @@
     navigator.clipboard.writeText(hex).then(() => {
       const btnText = copyBtn.querySelector('.btn-text');
       btnText.textContent = '✅ 已复制';
-      copyBtn.style.background = '#00a381';
+      copyBtn.style.background = '#0d7377';
       setStatus(`已复制: ${hex}`);
       setTimeout(() => {
         btnText.textContent = '复制色号';
-        copyBtn.style.background = '#00b894';
+        copyBtn.style.background = '';
       }, 2000);
     }).catch(() => {
       setStatus('复制失败，请手动复制');
