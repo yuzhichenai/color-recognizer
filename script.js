@@ -16,6 +16,7 @@
   const colorTooltip = document.getElementById('colorTooltip');
   const tooltipSwatch = document.getElementById('tooltipSwatch');
   const tooltipHex = document.getElementById('tooltipHex');
+  const toast = document.getElementById('toast');
   const modeBtns = document.querySelectorAll('.mode-btn');
 
   let sourceImage = null;
@@ -38,7 +39,6 @@
     displayCanvas.height = CANVAS_H;
     drawCheckerboard();
 
-    uploadBtn.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', onFileSelect);
 
     pasteBtn.addEventListener('click', onPasteClick);
@@ -130,9 +130,9 @@
           return;
         }
       }
-      setStatus('剪贴板中没有图片');
+      showToast('剪贴板中没有图片');
     }).catch(() => {
-      setStatus('无法读取剪贴板，请按 Ctrl+V 粘贴');
+      showToast('请按 Ctrl+V 快捷键粘贴图片');
     });
   }
 
@@ -419,6 +419,16 @@
 
   function setStatus(msg) {
     status.textContent = msg;
+  }
+
+  let toastTimer = null;
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toast.classList.remove('show');
+    }, 3000);
   }
 
   document.addEventListener('DOMContentLoaded', init);
