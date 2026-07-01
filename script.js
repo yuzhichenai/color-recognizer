@@ -131,6 +131,11 @@
 
     D.fi.setAttribute('multiple', '');
     setupCanvas();
+    const wr = D.wr.getBoundingClientRect();
+    canvasW = Math.floor(wr.width * (window.devicePixelRatio || 1));
+    canvasH = Math.floor(wr.height * (window.devicePixelRatio || 1));
+    D.cv.width = canvasW; D.cv.height = canvasH;
+    drawChk();
     document.addEventListener('paste', onPaste);
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('keyup', onKeyUp);
