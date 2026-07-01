@@ -36,7 +36,6 @@
   let mode = 'click', sampleSize = 3, altHeld = false, favOnly = false, fullscreen = false, soundOn = true;
   let canvasW = 0, canvasH = 0, dragCounter = 0, isPanning = false, panStart = null, panOffset = { x: 0, y: 0 };
   let _curColor = null, _history = [], _favs = new Set(), _locked = new Set(), _search = '';
-  let filterOrigCvs = null, filterOrigCtx = null;
 
   const MAX_IMG = 4096, ZOOM_MIN = 0.1, ZOOM_MAX = 20, ZOOM_STEP = 0.1, HIST_MAX = 20, MAG_SZ = 7, DOM_CNT = 8;
   const SK = 'cr-history', SELK = 'cr-selected', FAVK = 'cr-favs', ONBK = 'cr-onboarded', THMK = 'cr-theme', SNDK = 'cr-sound';
@@ -171,7 +170,7 @@
 
   function toggleModal(m) { if (m.hasAttribute('hidden')) m.removeAttribute('hidden'); else m.setAttribute('hidden',''); }
 
-  function createImgState() { const id=++idCounter; const state={id, srcImg:null, offCvs:null, offCtx:null, zoomLevel:1, imageRect:{x:0,y:0,w:0,h:0,bs:1,s:1}, dominantColors:[], fileName:''}; images[id]=state; return state; }
+  function createImgState() { const id=++idCounter; const state={id, srcImg:null, offCvs:null, offCtx:null, origCvs:null, origCtx:null, zoomLevel:1, imageRect:{x:0,y:0,w:0,h:0,bs:1,s:1}, dominantColors:[], fileName:''}; images[id]=state; return state; }
   function imgState() { return activeId?images[activeId]:null; }
   function ensureCanvasSize() { const r=D.wr.getBoundingClientRect(), dpr=window.devicePixelRatio||1, cw=Math.floor(r.width*dpr), ch=Math.floor(r.height*dpr); if (cw>10&&ch>10){canvasW=cw;canvasH=ch;D.cv.width=cw;D.cv.height=ch;} }
 
@@ -200,9 +199,9 @@
       if (!sw||!sh||sw<1||sh<1) { toast('图片尺寸无效'); return; }
       if (sw>MAX_IMG||sh>MAX_IMG) { const r=Math.min(MAX_IMG/sw,MAX_IMG/sh); sw=Math.round(sw*r); sh=Math.round(sh*r); }
 
-      filterOrigCvs = document.createElement('canvas'); filterOrigCvs.width=sw; filterOrigCvs.height=sh;
-      filterOrigCtx = filterOrigCvs.getContext('2d');
-      filterOrigCtx.drawImage(img, 0, 0, sw, sh);
+      state.origCvs = document.createElement('canvas'); state.origCvs.width=sw; state.origCvs.height=sh;
+      state.origCtx = state.origCvs.getContext('2d');
+      state.origCtx.drawImage(img, 0, 0, sw, sh);
 
       state.offCvs = document.createElement('canvas'); state.offCvs.width=sw; state.offCvs.height=sh;
       state.offCtx = state.offCvs.getContext('2d');
@@ -223,11 +222,11 @@
 
   function applyFilters() {
     const s = imgState();
-    if (!s||!s.offCtx||!filterOrigCtx) return;
+    if (!s||!s.offCtx||!s.origCtx) return;
     const b = parseInt(D.fB.value)/100, c = parseInt(D.fC.value)/100, sat = parseInt(D.fS.value)/100;
     D.fvB.textContent=D.fB.value; D.fvC.textContent=D.fC.value; D.fvS.textContent=D.fS.value;
     const w = s.offCvs.width, h = s.offCvs.height;
-    const src = filterOrigCtx.getImageData(0, 0, w, h);
+    const src = s.origCtx.getImageData(0, 0, w, h);
     const data = src.data;
     for (let i = 0; i < data.length; i += 4) {
       let r = data[i]/255, g = data[i+1]/255, b_ = data[i+2]/255;
