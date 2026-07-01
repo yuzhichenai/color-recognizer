@@ -131,11 +131,6 @@
 
     D.fi.setAttribute('multiple', '');
     setupCanvas();
-    const wr = D.wr.getBoundingClientRect();
-    canvasW = Math.floor(wr.width * (window.devicePixelRatio || 1));
-    canvasH = Math.floor(wr.height * (window.devicePixelRatio || 1));
-    D.cv.width = canvasW; D.cv.height = canvasH;
-    drawChk();
     document.addEventListener('paste', onPaste);
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('keyup', onKeyUp);
@@ -296,14 +291,14 @@
       }
     }).observe(D.wr);
   }
-
   function drawChk() {
-    if (canvasW < 2 || canvasH < 2) return;
-    const c = D.ctx;
-    c.fillStyle = '#fff'; c.fillRect(0, 0, canvasW, canvasH);
-    c.fillStyle = '#e8e8e8';
-    const sz = Math.max(8, Math.floor(canvasW / 80));
-    for (let y = 0; y < canvasH; y += sz) for (let x = 0; x < canvasW; x += sz) if ((Math.floor(x / sz) + Math.floor(y / sz)) % 2 === 0) c.fillRect(x, y, sz, sz);
+    const cw = canvasW, ch = canvasH;
+    if (cw < 2 || ch < 2) return;
+    const ctx = D.ctx;
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cw, ch);
+    ctx.fillStyle = '#e8e8e8';
+    const sz = Math.max(8, Math.floor(cw / 80));
+    for (let y = 0; y < ch; y += sz) for (let x = 0; x < cw; x += sz) if ((Math.floor(x / sz) + Math.floor(y / sz)) % 2 === 0) ctx.fillRect(x, y, sz, sz);
   }
 
   function onFileSelect(e) {
@@ -315,54 +310,80 @@
   function loadImg(file) {
     if (!file.type.startsWith('image/')) { toast('不支持的格式'); return; }
     const r = new FileReader();
+    r.onerror = () => toast('读取文件失败');
     r.onload = e => {
       const img = new Image();
-      img.onload = () => processImg(img, file.name);
+      const timer = setTimeout(() => { if (!img.complete) { img.src = ''; toast('图片加载超时'); } }, 15000);
+      img.onload = () => { clearTimeout(timer); processImg(img, file.name); };
+      img.onerror = () => { clearTimeout(timer); toast('图片加载失败，请检查文件'); };
       img.src = e.target.result;
     };
     r.readAsDataURL(file);
   }
 
   function processImg(img, name) {
-    const state = createImgState();
-    state.name = name || `图片 ${state.id}`;
-    let sw = img.width, sh = img.height;
-    if (sw > MAX_IMG || sh > MAX_IMG) { const r = Math.min(MAX_IMG / sw, MAX_IMG / sh); sw = Math.round(sw * r); sh = Math.round(sh * r); }
-    state.offCvs = document.createElement('canvas');
-    state.offCvs.width = sw; state.offCvs.height = sh;
-    state.offCtx = state.offCvs.getContext('2d');
-    state.offCtx.drawImage(img, 0, 0, sw, sh);
-    state.zoomLevel = 1;
-    state.dominantColors = [];
-    activeId = state.id;
-    D.ph.style.display = 'none'; D.zl.hidden = false;
-    loadHist();
-    _favs = loadFavs();
-    _locked = loadLocks();
-    fitImg(state); renderState(state); updateStatus();
-    D.cv.style.cursor = 'crosshair';
-    renderTabs();
-    if (Object.keys(images).length === 1) D.tabs.removeAttribute('hidden');
-    requestIdleCallback ? requestIdleCallback(() => extractDominant()) : setTimeout(extractDominant, 200);
+    try {
+      const state = createImgState();
+      state.name = name || `图片 ${state.id}`;
+      let sw = img.width, sh = img.height;
+      if (!sw || !sh || sw < 1 || sh < 1) { toast('图片尺寸无效'); return; }
+      if (sw > MAX_IMG || sh > MAX_IMG) { const r = Math.min(MAX_IMG / sw, MAX_IMG / sh); sw = Math.round(sw * r); sh = Math.round(sh * r); }
+      state.offCvs = document.createElement('canvas');
+      state.offCvs.width = sw; state.offCvs.height = sh;
+      state.offCtx = state.offCvs.getContext('2d');
+      if (!state.offCtx) { toast('无法创建画布上下文'); return; }
+      state.offCtx.drawImage(img, 0, 0, sw, sh);
+      state.zoomLevel = 1;
+      state.dominantColors = [];
+      activeId = state.id;
+      D.ph.style.display = 'none'; D.zl.hidden = false;
+      loadHist();
+      _favs = loadFavs();
+      _locked = loadLocks();
+      fitImg(state);
+      if (state.imageRect.w < 1 || state.imageRect.h < 1) {
+        ensureCanvasSize();
+        fitImg(state);
+      }
+      renderState(state); updateStatus();
+      D.cv.style.cursor = 'crosshair';
+      renderTabs();
+      if (Object.keys(images).length === 1) D.tabs.removeAttribute('hidden');
+      requestIdleCallback ? requestIdleCallback(() => extractDominant()) : setTimeout(extractDominant, 200);
+    } catch (err) {
+      toast('图片加载异常: ' + (err.message || '未知错误'));
+    }
+  }
+
+  function ensureCanvasSize() {
+    const r = D.wr.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const cw = Math.floor(r.width * dpr), ch = Math.floor(r.height * dpr);
+    if (cw > 10 && ch > 10) { canvasW = cw; canvasH = ch; D.cv.width = cw; D.cv.height = ch; }
   }
 
   function fitImg(s) {
     let cw = canvasW, ch = canvasH;
-    if (cw < 10 || ch < 10) {
-      const r = D.wr.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-      cw = Math.floor(r.width * dpr); ch = Math.floor(r.height * dpr);
-      if (cw > 10 && ch > 10) { canvasW = cw; canvasH = ch; D.cv.width = cw; D.cv.height = ch; }
-    }
+    if (cw < 10 || ch < 10) { ensureCanvasSize(); cw = canvasW; ch = canvasH; }
     const iw = s.offCvs.width, ih = s.offCvs.height;
+    if (cw < 1 || ch < 1 || iw < 1 || ih < 1) { s.imageRect = { x: 0, y: 0, w: 0, h: 0, bs: 1, s: 1 }; return; }
     const bs = Math.min(cw / iw, ch / ih, 1);
     const sc = bs * s.zoomLevel;
     s.imageRect = { x: (cw - iw * sc) / 2, y: (ch - ih * sc) / 2, w: iw * sc, h: ih * sc, bs, s: sc };
   }
 
   function renderState(s) {
-    drawChk();
     if (!s || !s.offCtx) return;
+    if (s.imageRect.w < 1 || s.imageRect.h < 1) {
+      drawChk();
+      return;
+    }
+    const cw = canvasW, ch = canvasH;
+    if (cw < 2 || ch < 2) return;
+    D.ctx.fillStyle = '#fff'; D.ctx.fillRect(0, 0, cw, ch);
+    D.ctx.fillStyle = '#e8e8e8';
+    const sz = Math.max(8, Math.floor(cw / 80));
+    for (let y = 0; y < ch; y += sz) for (let x = 0; x < cw; x += sz) if ((Math.floor(x / sz) + Math.floor(y / sz)) % 2 === 0) D.ctx.fillRect(x, y, sz, sz);
     D.ctx.drawImage(s.offCvs, s.imageRect.x, s.imageRect.y, s.imageRect.w, s.imageRect.h);
     D.zl.hidden = s.zoomLevel === 1;
     if (s.zoomLevel !== 1) D.zl.textContent = `${Math.round(s.zoomLevel * 100)}%`;
