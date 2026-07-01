@@ -298,6 +298,7 @@
   }
 
   function drawChk() {
+    if (canvasW < 2 || canvasH < 2) return;
     const c = D.ctx;
     c.fillStyle = '#fff'; c.fillRect(0, 0, canvasW, canvasH);
     c.fillStyle = '#e8e8e8';
@@ -346,10 +347,17 @@
   }
 
   function fitImg(s) {
+    let cw = canvasW, ch = canvasH;
+    if (cw < 10 || ch < 10) {
+      const r = D.wr.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      cw = Math.floor(r.width * dpr); ch = Math.floor(r.height * dpr);
+      if (cw > 10 && ch > 10) { canvasW = cw; canvasH = ch; D.cv.width = cw; D.cv.height = ch; }
+    }
     const iw = s.offCvs.width, ih = s.offCvs.height;
-    const bs = Math.min(canvasW / iw, canvasH / ih, 1);
+    const bs = Math.min(cw / iw, ch / ih, 1);
     const sc = bs * s.zoomLevel;
-    s.imageRect = { x: (canvasW - iw * sc) / 2, y: (canvasH - ih * sc) / 2, w: iw * sc, h: ih * sc, bs, s: sc };
+    s.imageRect = { x: (cw - iw * sc) / 2, y: (ch - ih * sc) / 2, w: iw * sc, h: ih * sc, bs, s: sc };
   }
 
   function renderState(s) {
