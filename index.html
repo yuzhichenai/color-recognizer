@@ -5,19 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>颜色识别器</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <link rel="stylesheet" href="style.css?v=1.5.5">
+  <link rel="stylesheet" href="style.css?v=1.6.0">
 </head>
 <body>
-  <div class="app">
+  <div class="app" id="appRoot">
     <header class="topbar">
       <div class="topbar-left">
         <span class="logo-mark">🎨</span>
         <span class="logo-text">颜色识别器</span>
-        <span class="logo-badge">v1.5.5</span>
+        <span class="logo-badge">v1.6.0</span>
       </div>
       <div class="topbar-right">
         <span class="status-dot"></span>
         <span class="status-text" id="status">就绪</span>
+        <button class="btn-icon-only" id="themeBtn" title="切换主题">🌓</button>
         <button class="btn-icon-only" id="shareBtn" title="分享调色板">🔗</button>
         <button class="btn-icon-only" id="exportBtn" title="导出颜色代码">📦</button>
         <button class="btn-icon-only" id="helpBtn" title="快捷键帮助">?</button>
@@ -29,7 +30,7 @@
       <button class="tab-add" id="tabAddBtn" title="上传新图片">+</button>
     </div>
 
-    <main class="main">
+    <main class="main" id="mainArea">
       <div class="canvas-area">
         <div class="canvas-wrapper" id="canvasWrapper">
           <canvas id="mainCanvas"></canvas>
@@ -60,6 +61,7 @@
           </div>
           <div class="zoom-label" id="zoomLabel" hidden></div>
           <div class="pan-label" id="panLabel" hidden></div>
+          <div class="info-bar" id="infoBar" hidden></div>
           <div class="magnifier" id="magnifier">
             <canvas id="magnifierCanvas"></canvas>
             <div class="magnifier-info">
@@ -75,10 +77,10 @@
         </div>
       </div>
 
-      <aside class="panel">
+      <aside class="panel" id="sidePanel">
         <section class="panel-section color-section">
           <div class="color-showcase">
-            <div class="color-ring" id="colorSwatch">
+            <div class="color-ring" id="colorSwatch" draggable="true" title="拖拽色环复制颜色">
               <span class="swatch-hex" id="swatchHex">?</span>
               <svg class="ring-deco" viewBox="0 0 120 120">
                 <circle cx="60" cy="60" r="54" fill="none" stroke="currentColor" stroke-width="1" opacity="0.15"/>
@@ -121,6 +123,24 @@
           </div>
         </section>
 
+        <section class="panel-section blind-section" id="blindSection" hidden>
+          <h3 class="panel-title">色盲模拟</h3>
+          <div class="blind-grid" id="blindGrid"></div>
+        </section>
+
+        <section class="panel-section filter-section" id="filterSection" hidden>
+          <h3 class="panel-title">图像滤镜</h3>
+          <div class="filter-slider"><span class="filter-label">亮度</span>
+            <input type="range" class="slider filter-slider-input" id="filterBrightness" min="0" max="200" value="100">
+            <span class="slider-val" id="filterValB">100</span></div>
+          <div class="filter-slider"><span class="filter-label">对比度</span>
+            <input type="range" class="slider filter-slider-input" id="filterContrast" min="0" max="200" value="100">
+            <span class="slider-val" id="filterValC">100</span></div>
+          <div class="filter-slider"><span class="filter-label">饱和度</span>
+            <input type="range" class="slider filter-slider-input" id="filterSaturation" min="0" max="200" value="100">
+            <span class="slider-val" id="filterValS">100</span></div>
+        </section>
+
         <section class="panel-section contrast-section" id="contrastSection" hidden>
           <h3 class="panel-title">对比度</h3>
           <div class="contrast-input">
@@ -160,6 +180,7 @@
           <div class="section-header">
             <h3 class="panel-title">取色记录</h3>
             <div class="history-tools">
+              <input type="text" class="search-field" id="historySearch" placeholder="搜索色号…">
               <button class="btn-fav-toggle" id="favToggle" title="仅显示收藏">☆</button>
               <span class="section-badge" id="historyCount">0/20</span>
             </div>
@@ -193,6 +214,7 @@
         </div>
       </div>
       <div class="bottombar-right">
+        <button class="btn-icon-only" id="soundBtn" title="取色音效">🔊</button>
         <label class="btn-action" id="uploadBtn">
           <input type="file" id="fileInput" accept="image/*" multiple hidden>
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
@@ -227,11 +249,13 @@
   <div class="export-modal" id="exportModal" hidden>
     <div class="help-modal-backdrop"></div>
     <div class="export-modal-content">
-      <h3>📦 导出颜色代码</h3>
+      <h3>📦 导出</h3>
       <div class="export-tabs">
         <button class="export-tab active" data-type="css">CSS</button>
         <button class="export-tab" data-type="tailwind">Tailwind</button>
         <button class="export-tab" data-type="scss">SCSS</button>
+        <button class="export-tab" data-type="json">JSON</button>
+        <button class="export-tab" data-type="csv">CSV</button>
       </div>
       <pre class="export-code" id="exportCode"></pre>
       <button class="btn-copy" id="exportCopyBtn">复制代码</button>
@@ -248,6 +272,7 @@
         <div class="help-row"><kbd>+</kbd><span>放大</span></div>
         <div class="help-row"><kbd>-</kbd><span>缩小</span></div>
         <div class="help-row"><kbd>0</kbd><span>重置缩放 100%</span></div>
+        <div class="help-row"><kbd>F</kbd><span>全屏画布模式</span></div>
         <div class="help-row"><kbd>拖拽</kbd><span>放大后平移画布</span></div>
         <div class="help-row"><kbd>C</kbd><span>复制色号</span></div>
         <div class="help-row"><kbd>S</kbd><span>提取主色调</span></div>
@@ -286,6 +311,6 @@
   </div>
 
   <div class="toast" id="toast"></div>
-  <script src="script.js?v=1.5.5"></script>
+  <script src="script.js?v=1.6.0"></script>
 </body>
 </html>
