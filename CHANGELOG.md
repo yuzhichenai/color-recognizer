@@ -1,5 +1,14 @@
 # 更新日志
 
+## v1.6.3 (2026-07-01)
+
+### 🐛 修复
+
+- **取色音效双击触发且持续不停** — `playPickSound` 改为 async 并 `await audioCtx.resume()` 解决浏览器自动播放策略；添加 `osc.stop()` 终止持续发声
+- **`isLocked` 未定义导致历史渲染崩溃** — 补充 `isLocked()` 函数定义，恢复 `renderHist()` 正常渲染
+- **历史色块看不到色号** — 历史项添加 `data-hex` 属性及 `::after` 悬浮提示，悬停时显示 HEX 色号
+- **有历史记录时导出失败** — `showExport()` 前置条件从 `!_curColor` 放宽为 `!_curColor && _history.length === 0`
+
 ## v1.6.2 (2026-06-30)
 
 ### 🐛 修复

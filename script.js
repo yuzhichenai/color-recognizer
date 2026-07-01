@@ -55,16 +55,17 @@
     };
   }
 
-  function playPickSound() {
+  async function playPickSound() {
     if (!soundOn) return;
     try {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
+      if (audioCtx.state === 'suspended') await audioCtx.resume();
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.connect(gain); gain.connect(audioCtx.destination);
       osc.frequency.value = 880; gain.gain.value = 0.08;
       osc.start(); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+      osc.stop(audioCtx.currentTime + 0.1);
     } catch (_) {}
   }
 
@@ -300,7 +301,7 @@
 
   function getDedupedHexes(limit) {
     const seen=new Set(), result=[]; function add(c){const h=gcs(c,'hex');if(!seen.has(h)){seen.add(h);result.push(h);}}
-    if (_curColor) add(_curColor); _history.forEach(h=>add(h.color)); return limit?result.slice(0,limit):result;
+    if (_curColor) add(_curColor); _history.forEach(h => h.color && add(h.color)); return limit?result.slice(0,limit):result;
   }
 
   function updateDisplay(color) {
@@ -410,6 +411,8 @@
     e.dataTransfer.effectAllowed = 'copy';
   }
 
+  function isLocked(hex) { return _locked.has(hex); }
+
   function renderHist() {
     const search = _search;
     const items = (favOnly?_history.filter(h=>_favs.has(h.hex)):_history).filter(h=>!search||h.hex.toUpperCase().includes(search)||(h.color&&`rgb(${h.color.r},${h.color.g},${h.color.b})`.includes(search)));
@@ -418,7 +421,7 @@
     D.cl.classList.remove('hidden'); D.hl.innerHTML='';
     items.forEach((item,idx) => {
       const realIdx=_history.indexOf(item), wr=document.createElement('div');
-      wr.className='history-item'+(isLocked(item.hex)?' locked':''); wr.style.backgroundColor=item.hex;
+      wr.className='history-item'+(isLocked(item.hex)?' locked':''); wr.style.backgroundColor=item.hex; wr.dataset.hex=item.hex.toUpperCase();
       const del=document.createElement('button'); del.className='delete-btn';del.textContent='×';
       del.addEventListener('click',e=>{e.stopPropagation();_history.splice(realIdx,1);_favs.delete(item.hex);saveHist();saveFavs();renderHist();});
       const fav=document.createElement('button'); const isFav=_favs.has(item.hex);
@@ -437,7 +440,7 @@
   function onSliderChange() { if (!_curColor) return; const h=parseInt(D.sH.value),s=parseInt(D.sS.value),l=parseInt(D.sL.value); D.svH.textContent=h;D.svS.textContent=s;D.svL.textContent=l; const rgb=hsl2rgb(h,s,l); _curColor=rgb; const hex=rgb2h(rgb.r,rgb.g,rgb.b); D.cs.style.backgroundColor=hex;D.sh.textContent=hex.toUpperCase();D.sh.style.color=contrastColor(rgb); updateDisplay(rgb); D.st.textContent=`微调中 · ${hex.toUpperCase()}`; }
 
   function showExport() {
-    if (!_curColor) { toast('还没有取色'); return; }
+    if (!_curColor && _history.length === 0) { toast('还没有取色'); return; }
     const active=document.querySelector('.export-tab.active'); const type=active?active.dataset.type:'css'; const hexes=getDedupedHexes(10); let code='';
     switch(type) {
       case 'css': code=':root {\n';hexes.forEach((h,i)=>{code+=`  --color-${i+1}: ${h};\n`;});code+='}';break;
