@@ -36,6 +36,7 @@
   let mode = 'click', sampleSize = 3, altHeld = false, favOnly = false, fullscreen = false, soundOn = true;
   let canvasW = 0, canvasH = 0, dragCounter = 0, isPanning = false, panStart = null, panOffset = { x: 0, y: 0 };
   let _curColor = null, _history = [], _favs = new Set(), _locked = new Set(), _search = '';
+  let audioCtx = null;
 
   const MAX_IMG = 4096, ZOOM_MIN = 0.1, ZOOM_MAX = 20, ZOOM_STEP = 0.1, HIST_MAX = 20, MAG_SZ = 7, DOM_CNT = 8;
   const SK = 'cr-history', SELK = 'cr-selected', FAVK = 'cr-favs', ONBK = 'cr-onboarded', THMK = 'cr-theme', SNDK = 'cr-sound';
@@ -57,13 +58,13 @@
   function playPickSound() {
     if (!soundOn) return;
     try {
-      const ac = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ac.createOscillator();
-      const gain = ac.createGain();
-      osc.connect(gain); gain.connect(ac.destination);
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
       osc.frequency.value = 880; gain.gain.value = 0.08;
-      osc.start(); gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.08);
-      setTimeout(() => ac.close(), 100);
+      osc.start(); gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
     } catch (_) {}
   }
 
@@ -144,7 +145,7 @@
 
     D.hb.addEventListener('click', () => toggleModal(D.hm)); D.chb.addEventListener('click', () => toggleModal(D.hm));
     D.hm.addEventListener('click', e => { if (e.target===D.hm||e.target.closest('.help-modal-backdrop')) toggleModal(D.hm); });
-    D.eb.addEventListener('click', showExport);
+    D.eb.addEventListener('click', () => { showExport(); toggleModal(D.em); });
     D.ecb.addEventListener('click', () => { if (D.ec.textContent) { navigator.clipboard.writeText(D.ec.textContent); toast('代码已复制'); } });
     exportTabs.forEach(t => { t.addEventListener('click', () => { exportTabs.forEach(x=>x.classList.remove('active')); t.classList.add('active'); showExport(); }); });
     D.em.addEventListener('click', e => { if (e.target===D.em||e.target.closest('.help-modal-backdrop')) toggleModal(D.em); });
@@ -445,7 +446,7 @@
       case 'json': code='{\n';hexes.forEach((h,i)=>{code+=`  "${i===0?'primary':'color'+(i+1)}": "${h}"${i<hexes.length-1?',':''}\n`;});code+='}';break;
       case 'csv': code='Name,HEX\n';hexes.forEach((h,i)=>{code+=`Color ${i+1},${h}\n`;});break;
     }
-    D.ec.textContent=code; toggleModal(D.em);
+    D.ec.textContent=code;
   }
 
   function exportPaletteImg() { const hexes=getDedupedHexes(); if (hexes.length===0) { toast('没有颜色可导出'); return; } const cvs=document.createElement('canvas'), ctx=cvs.getContext('2d'); const gap=4, sw=60, sh=40, cols=Math.min(hexes.length,5), rows=Math.ceil(hexes.length/cols); cvs.width=cols*(sw+gap)+gap; cvs.height=rows*(sh+20+gap)+gap; ctx.fillStyle='#1a1f2e'; ctx.fillRect(0,0,cvs.width,cvs.height); hexes.forEach((h,i)=>{const col=i%cols, row=Math.floor(i/cols); const x=gap+col*(sw+gap), y=gap+row*(sh+20+gap); ctx.fillStyle=h;ctx.fillRect(x,y,sw,sh);ctx.fillStyle='#e8eaed';ctx.font='10px monospace';ctx.textAlign='center';ctx.fillText(h,x+sw/2,y+sh+14);}); const link=document.createElement('a');link.download='palette.png';link.href=cvs.toDataURL();link.click();toast('色卡图片已下载'); }
