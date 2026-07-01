@@ -790,12 +790,23 @@
     D.st.textContent = `微调中 · ${hex.toUpperCase()}`;
   }
 
+  function getDedupedHexes(limit) {
+    const seen = new Set();
+    const result = [];
+    function add(c) {
+      const h = gcs(c, 'hex');
+      if (!seen.has(h)) { seen.add(h); result.push(h); }
+    }
+    if (_curColor) add(_curColor);
+    _history.forEach(h => add(h.color));
+    return limit ? result.slice(0, limit) : result;
+  }
+
   function showExport() {
     if (!_curColor) { toast('还没有取色'); return; }
     const active = document.querySelector('.export-tab.active');
     const type = active ? active.dataset.type : 'css';
-    const all = [_curColor, ..._history.map(h => h.color).slice(0, 9)];
-    const hexes = all.map(c => gcs(c, 'hex'));
+    const hexes = getDedupedHexes(10);
     let code = '';
     switch (type) {
       case 'css':
@@ -810,10 +821,8 @@
   }
 
   function exportPaletteImg() {
-    const colors = _history.map(h => h.hex);
-    if (colors.length === 0 && !_curColor) { toast('没有颜色可导出'); return; }
-    const all = _curColor ? [_curColor, ..._history.map(h => h.color)] : _history.map(h => h.color);
-    const hexes = all.map(c => gcs(c, 'hex'));
+    const hexes = getDedupedHexes();
+    if (hexes.length === 0) { toast('没有颜色可导出'); return; }
     const cvs = document.createElement('canvas');
     const ctx = cvs.getContext('2d');
     const gap = 4, sw = 60, sh = 40, cols = Math.min(hexes.length, 5), rows = Math.ceil(hexes.length / cols);
