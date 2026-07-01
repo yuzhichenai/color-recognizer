@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>颜色识别器</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <link rel="stylesheet" href="style.css?v=1.4.1">
+  <link rel="stylesheet" href="style.css?v=1.5.0">
 </head>
 <body>
   <div class="app">
@@ -13,15 +13,21 @@
       <div class="topbar-left">
         <span class="logo-mark">🎨</span>
         <span class="logo-text">颜色识别器</span>
-        <span class="logo-badge">v1.4.1</span>
+        <span class="logo-badge">v1.5.0</span>
       </div>
       <div class="topbar-right">
         <span class="status-dot"></span>
         <span class="status-text" id="status">就绪</span>
+        <button class="btn-icon-only" id="shareBtn" title="分享调色板">🔗</button>
         <button class="btn-icon-only" id="exportBtn" title="导出颜色代码">📦</button>
         <button class="btn-icon-only" id="helpBtn" title="快捷键帮助">?</button>
       </div>
     </header>
+
+    <div class="image-tabs" id="imageTabs" hidden>
+      <div class="tabs-scroll" id="tabsScroll"></div>
+      <button class="tab-add" id="tabAddBtn" title="上传新图片">+</button>
+    </div>
 
     <main class="main">
       <div class="canvas-area">
@@ -42,6 +48,7 @@
             <div class="placeholder-shortcuts">
               <span class="shortcut"><kbd>Ctrl+V</kbd> 粘贴</span>
               <span class="shortcut"><kbd>+</kbd><kbd>-</kbd> 缩放</span>
+              <span class="shortcut"><kbd>拖拽</kbd> 平移</span>
               <span class="shortcut"><kbd>C</kbd> 复制色号</span>
               <span class="shortcut"><kbd>Alt</kbd> 吸管</span>
               <span class="shortcut"><kbd>?</kbd> 快捷键</span>
@@ -52,6 +59,7 @@
             <span class="tooltip-hex" id="tooltipHex">#000000</span>
           </div>
           <div class="zoom-label" id="zoomLabel" hidden></div>
+          <div class="pan-label" id="panLabel" hidden></div>
           <div class="magnifier" id="magnifier">
             <canvas id="magnifierCanvas"></canvas>
             <div class="magnifier-info">
@@ -59,7 +67,6 @@
               <span class="magnifier-coord" id="magnifierCoord"></span>
             </div>
           </div>
-
           <div class="context-menu" id="contextMenu" hidden>
             <button class="ctx-item" data-action="copy">复制颜色</button>
             <button class="ctx-item" data-action="reset">重置缩放</button>
@@ -99,25 +106,28 @@
                 <span class="color-name-value" id="colorNameValue"></span>
               </div>
               <div class="hsl-sliders" id="hslSliders">
-                <div class="slider-row">
-                  <span class="slider-label">H</span>
+                <div class="slider-row"><span class="slider-label">H</span>
                   <input type="range" class="slider" id="sliderH" min="0" max="360" value="0">
-                  <span class="slider-val" id="sliderValH">0</span>
-                </div>
-                <div class="slider-row">
-                  <span class="slider-label">S</span>
+                  <span class="slider-val" id="sliderValH">0</span></div>
+                <div class="slider-row"><span class="slider-label">S</span>
                   <input type="range" class="slider" id="sliderS" min="0" max="100" value="0">
-                  <span class="slider-val" id="sliderValS">0</span>
-                </div>
-                <div class="slider-row">
-                  <span class="slider-label">L</span>
+                  <span class="slider-val" id="sliderValS">0</span></div>
+                <div class="slider-row"><span class="slider-label">L</span>
                   <input type="range" class="slider" id="sliderL" min="0" max="100" value="0">
-                  <span class="slider-val" id="sliderValL">0</span>
-                </div>
+                  <span class="slider-val" id="sliderValL">0</span></div>
               </div>
               <button class="btn-copy" id="copyBtn"><span class="btn-text">复制色号</span></button>
             </div>
           </div>
+        </section>
+
+        <section class="panel-section contrast-section" id="contrastSection" hidden>
+          <h3 class="panel-title">对比度</h3>
+          <div class="contrast-input">
+            <input type="text" class="contrast-field" id="contrastInput" placeholder="#FFFFFF" maxlength="7">
+            <button class="btn-refresh" id="contrastCheck">✓</button>
+          </div>
+          <div class="contrast-result" id="contrastResult"></div>
         </section>
 
         <section class="panel-section dominant-section" id="dominantSection" hidden>
@@ -166,16 +176,13 @@
       <div class="bottombar-left">
         <div class="mode-switch">
           <button class="mode-btn active" data-mode="click">
-            <span class="mode-indicator"></span>
-            点击
+            <span class="mode-indicator"></span>点击
           </button>
           <button class="mode-btn" data-mode="eyedropper">
-            <span class="mode-indicator"></span>
-            吸管
+            <span class="mode-indicator"></span>吸管
           </button>
           <button class="mode-btn" data-mode="region">
-            <span class="mode-indicator"></span>
-            区域
+            <span class="mode-indicator"></span>区域
           </button>
         </div>
         <div class="sample-picker" id="samplePicker">
@@ -187,20 +194,25 @@
       </div>
       <div class="bottombar-right">
         <label class="btn-action" id="uploadBtn">
-          <input type="file" id="fileInput" accept="image/*" hidden>
+          <input type="file" id="fileInput" accept="image/*" multiple hidden>
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
             <path d="M8 2v10M3 7l5-5 5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
             <path d="M2 12v1.5A1.5 1.5 0 0 0 3.5 15h9a1.5 1.5 0 0 0 1.5-1.5V12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
-          上传
+          </svg>上传
         </label>
         <button class="btn-action" id="pasteBtn">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
             <rect x="3" y="1" width="10" height="14" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
             <path d="M6 1V2.5A.5.5 0 0 0 6.5 3h3a.5.5 0 0 0 .5-.5V1" stroke="currentColor" stroke-width="1.2"/>
             <path d="M5 7h6M5 9.5h4M5 12h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>粘贴
+        </button>
+        <button class="btn-action" id="paletteImgBtn" title="导出为色卡图片">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <rect x="2" y="2" width="12" height="12" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+            <circle cx="6" cy="6" r="1.5" fill="currentColor"/>
+            <path d="M2 11l4-4 3 3 3-3 2 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          粘贴
         </button>
         <button class="btn-action" id="resetBtn" title="重置缩放">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
@@ -217,7 +229,7 @@
     <div class="export-modal-content">
       <h3>📦 导出颜色代码</h3>
       <div class="export-tabs">
-        <button class="export-tab active" data-type="css">CSS 变量</button>
+        <button class="export-tab active" data-type="css">CSS</button>
         <button class="export-tab" data-type="tailwind">Tailwind</button>
         <button class="export-tab" data-type="scss">SCSS</button>
       </div>
@@ -232,12 +244,13 @@
       <h2>⌨️ 快捷键</h2>
       <div class="help-grid">
         <div class="help-row"><kbd>Ctrl+V</kbd><span>粘贴图片</span></div>
-        <div class="help-row"><kbd>Alt</kbd><span>临时切换吸管模式</span></div>
+        <div class="help-row"><kbd>Alt</kbd><span>临时吸管模式</span></div>
         <div class="help-row"><kbd>+</kbd><span>放大</span></div>
         <div class="help-row"><kbd>-</kbd><span>缩小</span></div>
         <div class="help-row"><kbd>0</kbd><span>重置缩放 100%</span></div>
+        <div class="help-row"><kbd>拖拽</kbd><span>放大后平移画布</span></div>
         <div class="help-row"><kbd>C</kbd><span>复制色号</span></div>
-        <div class="help-row"><kbd>S</kbd><span>提取图片主色调</span></div>
+        <div class="help-row"><kbd>S</kbd><span>提取主色调</span></div>
         <div class="help-row"><kbd>双击</kbd><span>重置缩放</span></div>
         <div class="help-row"><kbd>右击</kbd><span>快捷菜单</span></div>
         <div class="help-row"><kbd>Esc</kbd><span>取消选区 / 关闭面板</span></div>
@@ -257,7 +270,22 @@
     </div>
   </div>
 
+  <div class="onboarding" id="onboarding" hidden>
+    <div class="onboarding-backdrop"></div>
+    <div class="onboarding-content">
+      <h2>👋 欢迎使用颜色识别器</h2>
+      <div class="onboarding-steps">
+        <div class="onb-step"><span class="onb-num">1</span><span>上传图片 — 拖拽 / 粘贴 / 选择文件</span></div>
+        <div class="onb-step"><span class="onb-num">2</span><span>取色 — 点击 / 吸管悬停 / 框选区域</span></div>
+        <div class="onb-step"><span class="onb-num">3</span><span>微调 — HSL 滑块手动调整颜色</span></div>
+        <div class="onb-step"><span class="onb-num">4</span><span>导出 — 代码 / 色卡图片 / 分享链接</span></div>
+      </div>
+      <label class="onb-toggle"><input type="checkbox" id="onbDontShow"> 不再显示</label>
+      <button class="btn-copy" id="onbStartBtn">开始使用</button>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
-  <script src="script.js?v=1.4.1"></script>
+  <script src="script.js?v=1.5.0"></script>
 </body>
 </html>
