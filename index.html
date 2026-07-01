@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>颜色识别器</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <link rel="stylesheet" href="style.css?v=1.6.3">
+  <link rel="stylesheet" href="style.css?v=1.7.0">
 </head>
 <body>
   <div class="app" id="appRoot">
@@ -13,7 +13,7 @@
       <div class="topbar-left">
         <span class="logo-mark">🎨</span>
         <span class="logo-text">颜色识别器</span>
-        <span class="logo-badge">v1.6.3</span>
+        <span class="logo-badge">v1.7.0</span>
       </div>
       <div class="topbar-right">
         <span class="status-dot"></span>
@@ -188,7 +188,7 @@
           <div class="history-list" id="historyList">
             <p class="empty-hint">暂无记录</p>
           </div>
-          <button class="btn-clear hidden" id="clearHistoryBtn">清空全部</button>
+          <div class="history-actions"><button class="btn-clear" id="clearHistoryBtn" disabled>清空全部</button><button class="btn-copyall" id="copyAllBtn" disabled>📋 复制全部</button></div>
         </section>
       </aside>
     </main>
@@ -278,6 +278,7 @@
         <div class="help-row"><kbd>S</kbd><span>提取主色调</span></div>
         <div class="help-row"><kbd>双击</kbd><span>重置缩放</span></div>
         <div class="help-row"><kbd>右击</kbd><span>快捷菜单</span></div>
+        <div class="help-row"><kbd>Ctrl+Z</kbd><span>撤销取色</span></div>
         <div class="help-row"><kbd>Esc</kbd><span>取消选区 / 关闭面板</span></div>
         <div class="help-row"><kbd>?</kbd><span>打开本面板</span></div>
       </div>
@@ -311,6 +312,6 @@
   </div>
 
   <div class="toast" id="toast"></div>
-  <script src="script.js?v=1.6.3"></script>
+  <script src="script.js?v=1.7.0"></script>
 </body>
 </html>

@@ -20,6 +20,8 @@ kbd { display: inline-block; padding: 0 5px; font-family: var(--font-mono); font
 .status-text { font-size: 12px; color: var(--text-secondary); }
 .btn-icon-only { width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
 .btn-icon-only:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-dim); }
+.btn-icon-only:disabled { opacity: 0.35; cursor: default; pointer-events: auto; }
+.btn-icon-only:disabled:hover { border-color: var(--border); color: var(--text-muted); background: var(--surface); }
 
 .image-tabs { display: flex; align-items: center; gap: 4px; padding: 4px 8px; background: #141a26; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
 .image-tabs[hidden] { display: none; }
@@ -78,6 +80,7 @@ kbd { display: inline-block; padding: 0 5px; font-family: var(--font-mono); font
 .color-row-label { font-size: 9px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; width: 26px; flex-shrink: 0; }
 .color-row-value { font-size: 11px; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .color-row-value.mono { font-family: var(--font-mono); }
+.hex-input { font-size: 11px; font-weight: 600; font-family: var(--font-mono); flex: 1; min-width: 0; background: transparent; border: none; outline: none; color: inherit; padding: 0; text-transform: uppercase; }
 .copy-mini { width: 18px; height: 18px; border: none; border-radius: 3px; background: transparent; color: var(--text-muted); font-size: 10px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; padding: 0; }
 .copy-mini:hover { background: var(--surface-hover); color: var(--primary); }
 .color-name { display: flex; align-items: center; gap: 5px; padding: 2px 6px; font-size: 11px; }
@@ -120,6 +123,8 @@ kbd { display: inline-block; padding: 0 5px; font-family: var(--font-mono); font
 .palette-label { font-size: 10px; font-weight: 600; color: var(--text-muted); width: 26px; flex-shrink: 0; }
 .palette-colors { display: flex; gap: 3px; flex: 1; flex-wrap: wrap; }
 .palette-swatch { width: 22px; height: 22px; border-radius: 3px; cursor: pointer; border: 1px solid var(--border); position: relative; }
+.palette-copy { width: 18px; height: 18px; border: none; border-radius: 3px; background: transparent; color: var(--text-muted); font-size: 10px; cursor: pointer; padding: 0; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.palette-copy:hover { color: var(--primary); background: var(--primary-dim); }
 .palette-swatch:hover { transform: scale(1.25); z-index: 1; border-color: var(--primary); }
 .palette-swatch::after { content: attr(data-hex); position: absolute; bottom: calc(100% + 3px); left: 50%; transform: translateX(-50%); background: rgba(10,14,23,0.95); font-size: 9px; font-family: var(--font-mono); padding: 2px 5px; border-radius: 3px; white-space: nowrap; opacity: 0; pointer-events: none; border: 1px solid var(--border); }
 .palette-swatch:hover::after { opacity: 1; }
@@ -138,11 +143,16 @@ kbd { display: inline-block; padding: 0 5px; font-family: var(--font-mono); font
 .history-item .fav-btn { top: -4px; left: -4px; background: #141a26; color: var(--text-muted); }
 .history-item .fav-btn.favorited { opacity: 1; color: var(--accent); border-color: var(--accent); background: var(--accent-dim); }
 .history-item.locked { border-color: var(--primary); }
-.history-item::after { content: attr(data-hex); position: absolute; top: calc(100% + 3px); left: 50%; transform: translateX(-50%); background: rgba(10,14,23,0.95); color: var(--text); font-size: 9px; font-family: var(--font-mono); padding: 2px 5px; border-radius: 3px; white-space: nowrap; opacity: 0; pointer-events: none; border: 1px solid var(--border); z-index: 5; }
+.history-item::after { content: attr(data-tip); position: absolute; top: calc(100% + 3px); left: 50%; transform: translateX(-50%); background: rgba(10,14,23,0.95); color: var(--text); font-size: 9px; font-family: var(--font-mono); padding: 2px 5px; border-radius: 3px; white-space: nowrap; opacity: 0; pointer-events: none; border: 1px solid var(--border); z-index: 5; }
 .history-item:hover::after { opacity: 1; }
 .btn-clear { display: block; width: 100%; padding: 5px 0; margin-top: 6px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: transparent; color: var(--text-muted); font-size: 11px; font-family: inherit; cursor: pointer; }
-.btn-clear:hover { border-color: var(--accent-dim); color: var(--accent); background: var(--accent-dim); }
-.btn-clear.hidden { display: none; }
+.btn-clear:hover:not(:disabled) { border-color: var(--accent-dim); color: var(--accent); background: var(--accent-dim); }
+.btn-clear:disabled { opacity: 0.35; cursor: default; }
+.history-actions { display: flex; gap: 4px; margin-top: 6px; min-height: 24px; }
+.history-actions .btn-clear { flex: 1; width: auto; margin-top: 0; }
+.btn-copyall { flex: 1; padding: 5px 0; border: 1px solid var(--primary); border-radius: var(--radius-sm); background: var(--primary-dim); color: var(--primary); font-size: 11px; font-family: inherit; cursor: pointer; }
+.btn-copyall:hover:not(:disabled) { background: var(--primary); color: #fff; }
+.btn-copyall:disabled { opacity: 0.35; cursor: default; }
 .empty-hint { color: var(--text-muted); font-size: 12px; width: 100%; text-align: center; padding: 6px 0; }
 
 .bottombar { display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; background: #141a26; border: 1px solid var(--border); border-radius: var(--radius-lg); backdrop-filter: blur(20px); gap: 6px; flex-wrap: wrap; }
@@ -273,4 +283,6 @@ body.light-theme .ctx-item:hover { background: rgba(0,0,0,0.05); color: #2d2d2d;
   .panel { flex-direction: column; }
   .canvas-wrapper { min-height: 200px; max-height: 300px; }
 }
+.fav-btn.favorited { animation: favBounce 0.12s ease; }
+@keyframes favBounce { 0%{transform:scale(1)} 50%{transform:scale(1.3)} 100%{transform:scale(1)} }
 
