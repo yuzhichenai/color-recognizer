@@ -327,6 +327,24 @@
     r.readAsDataURL(file);
   }
 
+  function onPasteClick() {
+    navigator.clipboard.read().then(items => {
+      for (const item of items) {
+        const t = item.types.find(t => t.startsWith('image/'));
+        if (t) { item.getType(t).then(blob => { const img = new Image(); img.onload = () => processImg(img, 'paste.png'); img.src = URL.createObjectURL(blob); }); return; }
+      }
+      toast('剪贴板中没有图片');
+    }).catch(() => toast('请按 Ctrl+V 粘贴图片'));
+  }
+
+  function onPaste(e) {
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) { const blob = item.getAsFile(); if (!blob) continue; const img = new Image(); img.onload = () => processImg(img, 'paste.png'); img.src = URL.createObjectURL(blob); return; }
+    }
+  }
+
   function processImg(img, name) {
     console.log('[ColorPicker] processImg:', name, img.width + 'x' + img.height);
     try {
