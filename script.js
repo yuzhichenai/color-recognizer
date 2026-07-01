@@ -123,6 +123,7 @@
   D.mgc.width = MAG_SZ; D.mgc.height = MAG_SZ;
 
   function init() {
+    console.log('[ColorPicker] init started');
     D.mg.style.display = 'none'; D.hm.setAttribute('hidden', ''); D.em.setAttribute('hidden', ''); D.onb.setAttribute('hidden', '');
     _favs = loadFavs(); _locked = loadLocks();
 
@@ -302,26 +303,32 @@
   }
 
   function onFileSelect(e) {
+    console.log('[ColorPicker] onFileSelect called, files:', e.target.files.length);
     const files = [...e.target.files];
-    files.forEach(f => loadImg(f));
+    if (files.length === 0) { toast('未选择文件'); return; }
+    files.forEach(f => { console.log('[ColorPicker] loading:', f.name, f.type); loadImg(f); });
     D.fi.value = '';
   }
 
   function loadImg(file) {
+    console.log('[ColorPicker] loadImg:', file.name, file.size);
+    toast(`正在加载 ${file.name}…`);
     if (!file.type.startsWith('image/')) { toast('不支持的格式'); return; }
     const r = new FileReader();
-    r.onerror = () => toast('读取文件失败');
+    r.onerror = () => { console.error('[ColorPicker] FileReader error'); toast('读取文件失败'); };
     r.onload = e => {
+      console.log('[ColorPicker] FileReader OK, size:', e.target.result.length);
       const img = new Image();
-      const timer = setTimeout(() => { if (!img.complete) { img.src = ''; toast('图片加载超时'); } }, 15000);
-      img.onload = () => { clearTimeout(timer); processImg(img, file.name); };
-      img.onerror = () => { clearTimeout(timer); toast('图片加载失败，请检查文件'); };
+      const timer = setTimeout(() => { if (!img.complete) { console.error('[ColorPicker] Image timeout'); img.src = ''; toast('图片加载超时'); } }, 15000);
+      img.onload = () => { clearTimeout(timer); console.log('[ColorPicker] img.onload OK'); processImg(img, file.name); };
+      img.onerror = () => { clearTimeout(timer); console.error('[ColorPicker] img.onerror'); toast('图片加载失败，请检查文件'); };
       img.src = e.target.result;
     };
     r.readAsDataURL(file);
   }
 
   function processImg(img, name) {
+    console.log('[ColorPicker] processImg:', name, img.width + 'x' + img.height);
     try {
       const state = createImgState();
       state.name = name || `图片 ${state.id}`;
@@ -346,11 +353,20 @@
         fitImg(state);
       }
       renderState(state); updateStatus();
+      console.log('[ColorPicker] render done, imageRect:', state.imageRect);
+      if (state.imageRect.w < 1 || state.imageRect.h < 1) {
+        console.warn('[ColorPicker] imageRect is zero, forcing recalc');
+        ensureCanvasSize();
+        fitImg(state);
+        renderState(state);
+      }
       D.cv.style.cursor = 'crosshair';
       renderTabs();
       if (Object.keys(images).length === 1) D.tabs.removeAttribute('hidden');
       requestIdleCallback ? requestIdleCallback(() => extractDominant()) : setTimeout(extractDominant, 200);
+      toast(`已加载: ${name}`);
     } catch (err) {
+      console.error('[ColorPicker] processImg error:', err);
       toast('图片加载异常: ' + (err.message || '未知错误'));
     }
   }
