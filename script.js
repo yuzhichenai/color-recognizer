@@ -139,7 +139,7 @@
     D.cb.addEventListener('click', () => copyColor('hex'));
     copyMinis.forEach(b => { b.addEventListener('click', e => { e.stopPropagation(); copyColor(b.dataset.format); }); });
 
-    D.tb.addEventListener('click', () => setTheme($('appRoot').classList.contains('light-theme') ? 'dark' : 'light'));
+    D.tb.addEventListener('click', () => setTheme(document.body.classList.contains('light-theme') ? 'dark' : 'light'));
     D.sndBtn.addEventListener('click', () => { soundOn=!soundOn; D.sndBtn.textContent=soundOn?'🔊':'🔇'; localStorage.setItem(SNDK, soundOn?'on':'off'); });
 
     D.hb.addEventListener('click', () => toggleModal(D.hm)); D.chb.addEventListener('click', () => toggleModal(D.hm));
@@ -166,7 +166,7 @@
     }
   }
 
-  function setTheme(t) { const root = $('appRoot'); root.classList.toggle('light-theme', t==='light'); localStorage.setItem(THMK, t); }
+  function setTheme(t) { document.body.classList.toggle('light-theme', t==='light'); localStorage.setItem(THMK, t); }
 
   function toggleModal(m) { if (m.hasAttribute('hidden')) m.removeAttribute('hidden'); else m.setAttribute('hidden',''); }
 
