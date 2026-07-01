@@ -105,10 +105,10 @@
     return best && md < 60000 ? best.n : null;
   }
 
-  function saveHist() { try { localStorage.setItem(SK + activeId, JSON.stringify(_history)); } catch (_) {} }
+  function saveHist() { try { localStorage.setItem(SK, JSON.stringify(_history)); } catch (_) {} }
   function loadHist() {
     try {
-      const d = localStorage.getItem(SK + activeId);
+      const d = localStorage.getItem(SK);
       if (d) { const p = JSON.parse(d); if (Array.isArray(p)) { _history = p.slice(0, HIST_MAX); return; } }
     } catch (_) {}
     _history = [];
