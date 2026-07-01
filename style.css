@@ -231,6 +231,23 @@ kbd { display: inline-block; padding: 0 5px; font-family: var(--font-mono); font
 .app.light-theme .slider { background: #d5d0c8; }
 .app.light-theme .slider::-webkit-slider-thumb { border-color: #fff; }
 
+.app.light-theme .image-tabs { background: #fff; }
+.app.light-theme .context-menu { background: #fff; }
+.app.light-theme .onboarding-content { background: #fff; }
+.app.light-theme .color-tooltip { background: rgba(255,255,255,0.95); color: #2d2d2d; border-color: rgba(0,0,0,0.1); }
+.app.light-theme .zoom-label,
+.app.light-theme .pan-label { background: rgba(255,255,255,0.85); color: #555; }
+.app.light-theme .info-bar { background: rgba(255,255,255,0.85); color: #888; }
+.app.light-theme .toast { background: rgba(255,255,255,0.95); color: #2d2d2d; border-color: rgba(0,0,0,0.1); }
+.app.light-theme .drop-overlay { background: rgba(255,255,255,0.92); color: #2d2d2d; }
+.app.light-theme .drop-overlay-content { border-color: var(--primary); }
+.app.light-theme .dominant-item::after,
+.app.light-theme .palette-swatch::after { background: rgba(255,255,255,0.95); color: #2d2d2d; border-color: rgba(0,0,0,0.1); }
+.app.light-theme .contrast-badge.pass { background: rgba(34,197,94,0.12); }
+.app.light-theme .history-item .fav-btn { background: #fff; }
+.app.light-theme .ctx-item { color: #555; }
+.app.light-theme .ctx-item:hover { background: rgba(0,0,0,0.05); color: #2d2d2d; }
+
 .fullscreen .panel { display: none; }
 .fullscreen .main { grid-template-columns: 1fr; }
 .fullscreen .image-tabs { display: none; }
