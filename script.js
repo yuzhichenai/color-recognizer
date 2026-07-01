@@ -206,6 +206,7 @@
 
     [D.sH, D.sS, D.sL].forEach(sl => sl.addEventListener('input', onSliderChange));
 
+    loadHist();
     renderHist();
     const restored = loadSel();
     if (restored && restored.color) {
