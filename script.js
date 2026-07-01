@@ -176,7 +176,12 @@
 
   function setupCanvas() { new ResizeObserver(entries => { for (const e of entries) { const {width,height}=e.contentRect, dpr=window.devicePixelRatio||1, w=Math.floor(width*dpr), h=Math.floor(height*dpr); if (w!==canvasW||h!==canvasH){canvasW=w;canvasH=h;D.cv.width=w;D.cv.height=h;const s=imgState();if(s&&s.offCtx){fitImg(s);renderState(s);updateStatus();}else drawChk();} } }).observe(D.wr); }
 
-  function drawChk() { const cw=canvasW,ch=canvasH; if (cw<2||ch<2) return; const ctx=D.ctx; ctx.fillStyle='#fff'; ctx.fillRect(0,0,cw,ch); ctx.fillStyle='#e8e8e8'; const sz=Math.max(8,Math.floor(cw/80)); for (let y=0;y<ch;y+=sz) for (let x=0;x<cw;x+=sz) if ((Math.floor(x/sz)+Math.floor(y/sz))%2===0) ctx.fillRect(x,y,sz,sz); }
+  function chkColors() {
+    const s = getComputedStyle(document.documentElement);
+    return { a: s.getPropertyValue('--chk-a').trim()||'#fff', b: s.getPropertyValue('--chk-b').trim()||'#e8e8e8' };
+  }
+
+  function drawChk() { const cw=canvasW,ch=canvasH; if (cw<2||ch<2) return; const ctx=D.ctx, chk=chkColors(); ctx.fillStyle=chk.a; ctx.fillRect(0,0,cw,ch); ctx.fillStyle=chk.b; const sz=Math.max(8,Math.floor(cw/80)); for (let y=0;y<ch;y+=sz) for (let x=0;x<cw;x+=sz) if ((Math.floor(x/sz)+Math.floor(y/sz))%2===0) ctx.fillRect(x,y,sz,sz); }
 
   function onFileSelect(e) { const files=[...e.target.files]; if (files.length===0) return; files.forEach(f=>loadImg(f)); D.fi.value=''; }
 
@@ -255,8 +260,9 @@
     if (s.imageRect.w<1||s.imageRect.h<1) { drawChk(); return; }
     const cw=canvasW, ch=canvasH;
     if (cw<2||ch<2) return;
-    D.ctx.fillStyle='#fff'; D.ctx.fillRect(0,0,cw,ch);
-    D.ctx.fillStyle='#e8e8e8'; const sz=Math.max(8,Math.floor(cw/80));
+    const chk=chkColors();
+    D.ctx.fillStyle=chk.a; D.ctx.fillRect(0,0,cw,ch);
+    D.ctx.fillStyle=chk.b; const sz=Math.max(8,Math.floor(cw/80));
     for (let y=0;y<ch;y+=sz) for (let x=0;x<cw;x+=sz) if ((Math.floor(x/sz)+Math.floor(y/sz))%2===0) D.ctx.fillRect(x,y,sz,sz);
     D.ctx.drawImage(s.offCvs, s.imageRect.x, s.imageRect.y, s.imageRect.w, s.imageRect.h);
     D.zl.hidden=s.zoomLevel===1; if (s.zoomLevel!==1) D.zl.textContent=`${Math.round(s.zoomLevel*100)}%`;
