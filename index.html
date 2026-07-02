@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>颜色识别器</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <link rel="stylesheet" href="style.css?v=1.7.0">
+  <link rel="stylesheet" href="style.css?v=1.8.0">
 </head>
 <body>
   <div class="app" id="appRoot">
@@ -13,7 +13,7 @@
       <div class="topbar-left">
         <span class="logo-mark">🎨</span>
         <span class="logo-text">颜色识别器</span>
-        <span class="logo-badge">v1.7.0</span>
+        <span class="logo-badge">v1.8.0</span>
       </div>
       <div class="topbar-right">
         <span class="status-dot"></span>
@@ -49,8 +49,10 @@
             <div class="placeholder-shortcuts">
               <span class="shortcut"><kbd>Ctrl+V</kbd> 粘贴</span>
               <span class="shortcut"><kbd>+</kbd><kbd>-</kbd> 缩放</span>
+              <span class="shortcut"><kbd>0</kbd> 100%</span>
               <span class="shortcut"><kbd>拖拽</kbd> 平移</span>
               <span class="shortcut"><kbd>C</kbd> 复制色号</span>
+              <span class="shortcut"><kbd>S</kbd> 提取主色调</span>
               <span class="shortcut"><kbd>Alt</kbd> 吸管</span>
               <span class="shortcut"><kbd>?</kbd> 快捷键</span>
             </div>
@@ -117,6 +119,10 @@
                 <div class="slider-row"><span class="slider-label">L</span>
                   <input type="range" class="slider" id="sliderL" min="0" max="100" value="0">
                   <span class="slider-val" id="sliderValL">0</span></div>
+                <div class="slider-row"><span class="slider-label">A</span>
+                  <input type="range" class="slider" id="sliderA" min="0" max="255" value="255">
+                  <span class="slider-val" id="sliderValA">255</span></div>
+              </div>
               </div>
               <button class="btn-copy" id="copyBtn"><span class="btn-text">复制色号</span></button>
             </div>
@@ -179,11 +185,11 @@
         <section class="panel-section history-section">
           <div class="section-header">
             <h3 class="panel-title">取色记录</h3>
-            <div class="history-tools">
-              <input type="text" class="search-field" id="historySearch" placeholder="搜索色号…">
-              <button class="btn-fav-toggle" id="favToggle" title="仅显示收藏">☆</button>
-              <span class="section-badge" id="historyCount">0/20</span>
-            </div>
+              <div class="history-tools">
+                <div class="search-wrap"><input type="text" class="search-field" id="historySearch" placeholder="搜索色号…"><button class="search-clear" id="searchClear" hidden>×</button></div>
+                <button class="btn-fav-toggle" id="favToggle" title="仅显示收藏">☆</button>
+                <span class="section-badge" id="historyCount">0/20</span>
+              </div>
           </div>
           <div class="history-list" id="historyList">
             <p class="empty-hint">暂无记录</p>
@@ -279,6 +285,7 @@
         <div class="help-row"><kbd>双击</kbd><span>重置缩放</span></div>
         <div class="help-row"><kbd>右击</kbd><span>快捷菜单</span></div>
         <div class="help-row"><kbd>Ctrl+Z</kbd><span>撤销取色</span></div>
+        <div class="help-row"><kbd>Ctrl+F</kbd><span>搜索色号</span></div>
         <div class="help-row"><kbd>Esc</kbd><span>取消选区 / 关闭面板</span></div>
         <div class="help-row"><kbd>?</kbd><span>打开本面板</span></div>
       </div>
@@ -312,6 +319,6 @@
   </div>
 
   <div class="toast" id="toast"></div>
-  <script src="script.js?v=1.7.0"></script>
+  <script src="script.js?v=1.8.0"></script>
 </body>
 </html>

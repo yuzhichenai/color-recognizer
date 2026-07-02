@@ -22,9 +22,9 @@
     sb: $('shareBtn'), hm: $('helpModal'), hb: $('helpBtn'), chb: $('closeHelpBtn'),
     rb: $('resetBtn'), pb: $('paletteImgBtn'), tb: $('themeBtn'), sndBtn: $('soundBtn'), cab: $('copyAllBtn'),
     dob: $('dropOverlay'), ts: $('toast'),
-    ft: $('favToggle'), rd: $('refreshDominant'), hs: $('historySearch'),
+    ft: $('favToggle'), rd: $('refreshDominant'), hs: $('historySearch'), sc: $('searchClear'),
     sH: $('sliderH'), sS: $('sliderS'), sL: $('sliderL'),
-    svH: $('sliderValH'), svS: $('sliderValS'), svL: $('sliderValL'),
+    svH: $('sliderValH'), svS: $('sliderValS'), svL: $('sliderValL'), sA: $('sliderA'), svA: $('sliderValA'),
     tabs: $('imageTabs'), tabsScroll: $('tabsScroll'), tabAdd: $('tabAddBtn'),
     onb: $('onboarding'), onbStart: $('onbStartBtn'), onbDont: $('onbDontShow'),
     cchk: $('contrastCheck')
@@ -35,7 +35,7 @@
   let images = {}, activeId = null, idCounter = 0;
   let mode = 'click', sampleSize = 3, altHeld = false, favOnly = false, fullscreen = false, soundOn = true;
   let canvasW = 0, canvasH = 0, dragCounter = 0, isPanning = false, panStart = null, panOffset = { x: 0, y: 0 }, panMoved = false;
-  let _curColor = null, _history = [], _favs = new Set(), _locked = new Set(), _search = '';
+  let _curColor = null, _history = [], _favs = new Set(), _search = '', _alpha = 255, _lastPickCoord = null;
   let audioCtx = null;
 
   const MAX_IMG = 4096, ZOOM_MIN = 0.1, ZOOM_MAX = 20, ZOOM_STEP = 0.1, HIST_MAX = 20, MAG_SZ = 7, DOM_CNT = 8;
@@ -99,19 +99,38 @@
 
   function saveHist() { try { localStorage.setItem(SK, JSON.stringify(_history)); } catch (_) {} }
   function loadHist() { try { const d = localStorage.getItem(SK); if (d) { const p = JSON.parse(d); if (Array.isArray(p)) { _history = p.slice(0, HIST_MAX); return; } } } catch (_) {} _history = []; }
-  function saveSel() { try { localStorage.setItem(SELK, JSON.stringify({ hex: _curColor?rgb2h(_curColor.r,_curColor.g,_curColor.b):null, color: _curColor })); } catch (_) {} }
-  function loadSel() { try { const d = localStorage.getItem(SELK); if (d) { const p = JSON.parse(d); if (p&&p.hex&&p.color) return p; } } catch (_) {} return null; }
+  function saveSel() { try { localStorage.setItem(SELK, JSON.stringify({ hex: _curColor?rgb2h(_curColor.r,_curColor.g,_curColor.b):null, color: _curColor, alpha: _alpha })); } catch (_) {} }
+  function loadSel() { try { const d = localStorage.getItem(SELK); if (d) { const p = JSON.parse(d); if (p&&p.hex&&p.color) { if (p.alpha!==undefined) _alpha=p.alpha; return p; } } } catch (_) {} return null; }
   function loadFavs() { try { const d = localStorage.getItem(FAVK); return d ? new Set(JSON.parse(d)) : new Set(); } catch (_) { return new Set(); } }
   function saveFavs() { try { localStorage.setItem(FAVK, JSON.stringify([..._favs])); } catch (_) {} }
-  function saveLocks() { try { localStorage.setItem('cr-locks', JSON.stringify([..._locked])); } catch (_) {} }
-  function loadLocks() { try { const d = localStorage.getItem('cr-locks'); return d ? new Set(JSON.parse(d)) : new Set(); } catch (_) { return new Set(); } }
+
 
   D.mgc.width = MAG_SZ; D.mgc.height = MAG_SZ;
 
   function init() {
     soundOn = localStorage.getItem(SNDK) !== 'off';
     D.mg.style.display = 'none'; D.hm.setAttribute('hidden',''); D.em.setAttribute('hidden',''); D.onb.setAttribute('hidden','');
-    _favs = loadFavs(); _locked = loadLocks();
+    _favs = loadFavs();
+
+    const urlParams = new URLSearchParams(location.search);
+    const shared = urlParams.get('p');
+    if (shared && _history.length === 0) {
+      const hexes = shared.split(',').filter(h => /^[0-9A-Fa-f]{6}$/.test(h));
+      hexes.slice(0, HIST_MAX).forEach(h => {
+        const hex = '#' + h;
+        const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+        addHist(hex, { r, g, b });
+      });
+      if (_history.length > 0) {
+        const last = _history[_history.length - 1];
+        selectColor(last.color, false);
+        saveSel();
+        saveHist();
+        renderHist();
+        toast(`已加载 ${_history.length} 个共享颜色`);
+      }
+    }
+
     if (!localStorage.getItem(ONBK)) D.onb.removeAttribute('hidden');
     D.onbStart.addEventListener('click', () => { if (D.onbDont.checked) localStorage.setItem(ONBK,'1'); D.onb.setAttribute('hidden',''); });
     D.fi.setAttribute('multiple',''); setupCanvas();
@@ -131,11 +150,22 @@
     cv.addEventListener('touchstart', onTouchStart, { passive: false }); cv.addEventListener('touchmove', onTouchMove, { passive: false }); cv.addEventListener('touchend', onTouchEnd);
     cv.addEventListener('contextmenu', e => e.preventDefault());
 
+  $$('.ctx-item').forEach(item => {
+    item.addEventListener('click', () => {
+      D.ct.setAttribute('hidden', '');
+      switch (item.dataset.action) {
+        case 'copy': if (_curColor) copyColor('hex'); break;
+        case 'reset': resetZoom(); break;
+        case 'dominant': extractDominant(); break;
+      }
+    });
+  });
+
     D.fi.addEventListener('change', onFileSelect); $('pasteBtn').addEventListener('click', onPasteClick); D.tabAdd.addEventListener('click', () => D.fi.click());
 
     D.cs.addEventListener('dragstart', onDragStart); D.cs.addEventListener('dragend', e => e.preventDefault());
 
-    modeBtns.forEach(btn => { btn.addEventListener('click', () => { modeBtns.forEach(b => b.classList.remove('active')); btn.classList.add('active'); mode = btn.dataset.mode; if (mode==='eyedropper'&&imgState()) D.st.textContent='🔍 吸管模式：悬停即取色'; else updateStatus(); }); });
+    modeBtns.forEach(btn => { btn.addEventListener('click', () => { modeBtns.forEach(b => b.classList.remove('active')); btn.classList.add('active'); mode = btn.dataset.mode; D.wr.classList.toggle('eyedropper', mode==='eyedropper'); if (mode==='eyedropper'&&imgState()) D.st.textContent='🔍 吸管模式：悬停即取色'; else updateStatus(); }); });
     sampleBtns.forEach(b => { b.addEventListener('click', () => { sampleBtns.forEach(x=>x.classList.remove('active')); b.classList.add('active'); sampleSize=parseInt(b.dataset.size); }); });
 
     D.cb.addEventListener('click', () => copyColor('hex'));
@@ -157,16 +187,17 @@
     D.cab.addEventListener('click', () => { const hexes=_history.map(h=>h.hex.toUpperCase()).join(' '); if (!hexes) { toast('没有记录'); return; } navigator.clipboard.writeText(hexes).then(()=>toast('已复制全部色号')).catch(()=>toast('复制失败')); });
     D.ft.addEventListener('click', () => { favOnly=!favOnly; D.ft.classList.toggle('active'); D.ft.textContent=favOnly?'★':'☆'; renderHist(); });
     D.rd.addEventListener('click', extractDominant); D.cchk.addEventListener('click', checkContrast); D.cti.addEventListener('keydown', e => { if (e.key==='Enter') checkContrast(); });
-    D.hs.addEventListener('input', () => { _search=D.hs.value.trim().toUpperCase(); renderHist(); });
+    D.hs.addEventListener('input', () => { _search=D.hs.value.trim().toUpperCase(); D.sc.hidden=_search.length===0; renderHist(); });
+    D.sc.addEventListener('click', () => { D.hs.value=''; _search=''; D.sc.hidden=true; renderHist(); D.hs.focus(); });
     [D.fB,D.fC,D.fS].forEach(sl => sl.addEventListener('input', applyFilters));
-    [D.sH,D.sS,D.sL].forEach(sl => sl.addEventListener('input', onSliderChange));
+    [D.sH,D.sS,D.sL,D.sA].forEach(sl => sl.addEventListener('input', onSliderChange));
 
     loadHist(); renderHist(); updateExportBtn();
     const restored = loadSel();
     if (restored&&restored.color) {
       _curColor=restored.color; const {r,g,b}=restored.color;
       D.cs.style.backgroundColor=restored.hex; D.sh.textContent=(restored.hex||'#------').toUpperCase();
-      D.sh.style.color=contrastColor(restored.color); updateDisplay(restored.color); updateExportBtn();
+      D.sh.style.color=contrastColor(restored.color); updateDisplay(restored.color); D.sA.value=_alpha; D.svA.textContent=_alpha; setRingBorder(restored.color); updateExportBtn();
     }
   }
 
@@ -221,7 +252,7 @@
       D.ib.textContent = `${img.width}×${img.height}${name?' · '+name:''}`;
       D.fs.hidden=false; D.fB.value=100; D.fC.value=100; D.fS.value=100;
       D.fvB.textContent='100'; D.fvC.textContent='100'; D.fvS.textContent='100';
-      loadHist(); _favs=loadFavs(); _locked=loadLocks();
+loadHist(); _favs=loadFavs();
       panOffset={x:0,y:0}; fitImg(state); renderState(state); updateStatus();
       D.cv.style.cursor='crosshair'; renderTabs();
       if (Object.keys(images).length===1) D.tabs.removeAttribute('hidden');
@@ -296,8 +327,8 @@
   function gcs(color,fmt) {
     switch(fmt) {
       case 'hex': return rgb2h(color.r,color.g,color.b).toUpperCase();
-      case 'rgb': return `rgb(${color.r},${color.g},${color.b})`;
-      case 'hsl': { const h=rgb2hsl(color.r,color.g,color.b); return `hsl(${h.h},${h.s}%,${h.l}%)`; }
+      case 'rgb': return _alpha<255?`rgba(${color.r},${color.g},${color.b},${(_alpha/255).toFixed(2)})`:`rgb(${color.r},${color.g},${color.b})`;
+      case 'hsl': { const h=rgb2hsl(color.r,color.g,color.b); return _alpha<255?`hsla(${h.h},${h.s}%,${h.l}%,${(_alpha/255).toFixed(2)})`:`hsl(${h.h},${h.s}%,${h.l}%)`; }
     }
   }
 
@@ -308,9 +339,9 @@
 
   function updateDisplay(color) {
     const hex=rgb2h(color.r,color.g,color.b), hsl=rgb2hsl(color.r,color.g,color.b);
-    D.hv.textContent=hex.toUpperCase(); D.rv.textContent=`rgb(${color.r},${color.g},${color.b})`; D.hslv.textContent=`hsl(${hsl.h},${hsl.s}%,${hsl.l}%)`;
+    D.hv.textContent=hex.toUpperCase(); D.rv.textContent=gcs(color,'rgb'); D.hslv.textContent=gcs(color,'hsl');
     const nm=findName(color.r,color.g,color.b); if (nm){D.cn.hidden=false;D.cnv.textContent=nm;}else D.cn.hidden=true;
-    D.sH.value=hsl.h; D.svH.textContent=hsl.h; D.sS.value=hsl.s; D.svS.textContent=hsl.s; D.sL.value=hsl.l; D.svL.textContent=hsl.l;
+    D.sH.value=hsl.h; D.svH.textContent=hsl.h; D.sS.value=hsl.s; D.svS.textContent=hsl.s; D.sL.value=hsl.l; D.svL.textContent=hsl.l; D.sA.value=_alpha; D.svA.textContent=_alpha;
     updatePalette(color); updateBlind(color); checkContrast();
   }
 
@@ -361,11 +392,13 @@
   function luminance(r,g,b) { const [R,G,B]=[r/255,g/255,b/255].map(c=>c<=0.03928?c/12.92:((c+0.055)/1.055)**2.4); return 0.2126*R+0.7152*G+0.0722*B; }
 
   function onCanvasClick(e) {
-    if (_suppressClick) { _suppressClick=false; return; }
-    if (!imgState()||mode==='eyedropper'||mode!=='click') return;
-    const pos=gcc(e), s=imgState(); if (!inside(pos.x,pos.y,s)) return;
-    const ic=c2i(pos.x,pos.y,s), color=getPx(ic.x,ic.y,s);
-    if (color) { selectColor(color); showTooltip(pos.x,pos.y,color); }
+    if (_suppressClick) { _suppressClick = false; return; }
+    if (!imgState() || mode !== 'click') return;
+    const pos = gcc(e), s = imgState(); if (!inside(pos.x, pos.y, s)) return;
+    const ic = c2i(pos.x, pos.y, s);
+    const half = Math.floor(sampleSize / 2);
+    const color = getRegionAvg(ic.x - half, ic.y - half, ic.x + half, ic.y + half, s);
+    if (color) { _lastPickCoord = { x: ic.x, y: ic.y }; selectColor(color); showTooltip(pos.x, pos.y, color); }
   }
 
   let _suppressClick = false, _hexCancel = false;
@@ -385,7 +418,7 @@
   function onMouseEnter(e) { const s=imgState(); if (!s) return; const pos=gcc(e); D.mg.style.display=inside(pos.x,pos.y,s)?'flex':'none'; }
   function onMouseLeave() { if (isDragging&&mode==='region'){isDragging=false;dragStart=null;dragEnd=null;const s=imgState();if(s)renderState(s);} D.mg.style.display='none'; isPanning=false; D.wr.classList.remove('panning'); }
 
-  function onMouseUp() { if (isPanning) { isPanning=false; D.wr.classList.remove('panning'); if (panMoved) _suppressClick=true; return; } if (!isDragging||mode!=='region') return; isDragging=false; if (!dragStart||!dragEnd) return; const s=imgState(); if (!s) return; const x1=Math.min(dragStart.x,dragEnd.x),y1=Math.min(dragStart.y,dragEnd.y),x2=Math.max(dragStart.x,dragEnd.x),y2=Math.max(dragStart.y,dragEnd.y); const p1=c2i(x1,y1,s),p2=c2i(x2,y2,s); const avg=getRegionAvg(p1.x,p1.y,p2.x,p2.y,s); if (avg){selectColor(avg);showTooltip((x1+x2)/2,(y1+y2)/2,avg);} dragStart=null;dragEnd=null;renderState(s); }
+  function onMouseUp() { if (isPanning) { isPanning=false; D.wr.classList.remove('panning'); if (panMoved) _suppressClick=true; return; } if (!isDragging||mode!=='region') return; isDragging=false; if (!dragStart||!dragEnd) return; const s=imgState(); if (!s) return; const x1=Math.min(dragStart.x,dragEnd.x),y1=Math.min(dragStart.y,dragEnd.y),x2=Math.max(dragStart.x,dragEnd.x),y2=Math.max(dragStart.y,dragEnd.y); const p1=c2i(x1,y1,s),p2=c2i(x2,y2,s); const avg=getRegionAvg(p1.x,p1.y,p2.x,p2.y,s); if (avg){_lastPickCoord={x:Math.round((p1.x+p2.x)/2),y:Math.round((p1.y+p2.y)/2)};selectColor(avg);showTooltip((x1+x2)/2,(y1+y2)/2,avg);} dragStart=null;dragEnd=null;renderState(s); }
 
   function onTouchStart(e){e.preventDefault();const t=e.touches[0];D.cv.dispatchEvent(new MouseEvent('mousedown',{clientX:t.clientX,clientY:t.clientY}));}
   function onTouchMove(e){e.preventDefault();const t=e.touches[0];D.cv.dispatchEvent(new MouseEvent('mousemove',{clientX:t.clientX,clientY:t.clientY}));}
@@ -395,20 +428,26 @@
 
   function selectColor(color, saveToHist) {
     if (saveToHist===undefined) saveToHist=true;
-    _curColor=color; const hex=rgb2h(color.r,color.g,color.b);
+    _curColor=color; _alpha=255; const hex=rgb2h(color.r,color.g,color.b);
     D.cs.style.backgroundColor=hex; D.sh.textContent=hex.toUpperCase(); D.sh.style.color=contrastColor(color);
-    updateDisplay(color); D.cb.querySelector('.btn-text').textContent='复制色号'; D.cb.style.background='';
+    updateDisplay(color); setRingBorder(color); D.cb.querySelector('.btn-text').textContent='复制色号'; D.cb.style.background='';
     if (saveToHist) { addHist(hex,color); saveSel(); }
-    updateStatus(); updateExportBtn(); playPickSound();
+    updateStatus(); updateExportBtn(); if (saveToHist) playPickSound();
   }
 
   function contrastColor(color) { const l=(0.299*color.r+0.587*color.g+0.114*color.b)/255; return l>0.5?'#1a1f2e':'#e8eaed'; }
+
+  function setRingBorder(color) {
+    if (!color) { D.cs.style.borderColor=''; return; }
+    const hsl=rgb2hsl(color.r,color.g,color.b), comp=hsl2rgb((hsl.h+180)%360,hsl.s,hsl.l);
+    D.cs.style.borderColor=rgb2h(comp.r,comp.g,comp.b).toUpperCase();
+  }
 
   function updateMag(e,color,ic,s) { const rect=D.cv.getBoundingClientRect(); const cx=('touches'in e?e.touches[0].clientX:e.clientX)-rect.left, cy=('touches'in e?e.touches[0].clientY:e.clientY)-rect.top; D.mg.style.left=cx+'px'; D.mg.style.top=cy+'px'; const half=Math.floor(MAG_SZ/2); const d=s.offCtx.getImageData(Math.max(0,ic.x-half),Math.max(0,ic.y-half),MAG_SZ,MAG_SZ); D.mgcx.putImageData(d,0,0); D.mgh.textContent=rgb2h(color.r,color.g,color.b).toUpperCase(); D.mgco.textContent=`(${ic.x},${ic.y})`; }
 
   function showTooltip(cx,cy,color) { const hex=rgb2h(color.r,color.g,color.b); D.tts.style.backgroundColor=hex; D.tth.textContent=hex.toUpperCase(); const ww=D.wr.getBoundingClientRect().width, wh=D.wr.getBoundingClientRect().height; D.tt.style.left=(ww/2)+'px'; D.tt.style.top=(wh*0.6)+'px'; D.tt.style.transform='translate(-50%,-50%)'; D.tt.style.display='flex'; clearTimeout(D.tt._t); D.tt._t=setTimeout(()=>{D.tt.style.display='none';},2000); }
 
-  function addHist(hex,color) { if (_history.length>0&&_history[_history.length-1].hex===hex) return; _history.push({hex,color:{r:color.r,g:color.g,b:color.b},time:Date.now()}); if (_history.length>HIST_MAX) _history.shift(); saveHist(); renderHist(); }
+  function addHist(hex,color) { if (_history.length>0&&_history[_history.length-1].hex===hex) return; _history.push({hex,color:{r:color.r,g:color.g,b:color.b},time:Date.now(),coord:_lastPickCoord?{x:_lastPickCoord.x,y:_lastPickCoord.y}:null}); if (_history.length>HIST_MAX) _history.shift(); saveHist(); renderHist(); }
 
   function onDragStart(e) {
     if (!_curColor) { e.preventDefault(); return; }
@@ -416,29 +455,27 @@
     e.dataTransfer.effectAllowed = 'copy';
   }
 
-  function isLocked(hex) { return _locked.has(hex); }
-
-  function renderHist() {
+function renderHist() {
     const search = _search;
-    const items = (favOnly?_history.filter(h=>_favs.has(h.hex)):_history).filter(h=>!search||h.hex.toUpperCase().includes(search)||(h.color&&(`RGB(${h.color.r},${h.color.g},${h.color.b})`.includes(search)||(()=>{const hsl=rgb2hsl(h.color.r,h.color.g,h.color.b);return `HSL(${hsl.h},${hsl.s}%,${hsl.l}%)`.includes(search);})())));
+    const items = (favOnly?_history.filter(h=>_favs.has(h.hex)):_history).filter(h=>!search||h.hex.toUpperCase().includes(search)||(h.color&&(`RGB(${h.color.r},${h.color.g},${h.color.b})`.includes(search)||(()=>{const hsl=rgb2hsl(h.color.r,h.color.g,h.color.b);return `HSL(${hsl.h},${hsl.s}%,${hsl.l}%)`.includes(search);})()))).sort((a,b)=>(_favs.has(b.hex)?1:0)-(_favs.has(a.hex)?1:0));
     D.hc.textContent=`${items.length}/${HIST_MAX}`;
     if (items.length===0) { D.hl.innerHTML=`<p class="empty-hint">${search?'无匹配结果':(favOnly?'暂无收藏':'暂无记录')}</p>`; D.cl.disabled=true; D.cab.disabled=true; updateExportBtn(); return; }
     D.cl.disabled=false; D.cab.disabled=false; D.hl.innerHTML=''; updateExportBtn();
     items.forEach((item,idx) => {
       const realIdx=_history.indexOf(item), wr=document.createElement('div');
-      wr.className='history-item'+(isLocked(item.hex)?' locked':''); wr.style.backgroundColor=item.hex; const t=item.time?new Date(item.time):null; wr.dataset.tip=item.hex.toUpperCase()+(t?` · ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}`:'');
+      wr.className='history-item'; wr.style.backgroundColor=item.hex; const t=item.time?new Date(item.time):null; const ctrlMessage = ` · (${item.coord?.x},${item.coord?.y})`; wr.dataset.tip=item.hex.toUpperCase()+(t?` · ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}`:'')+(item.coord?ctrlMessage:'');
       const del=document.createElement('button'); del.className='delete-btn';del.textContent='×';
       del.addEventListener('click',e=>{e.stopPropagation();_history.splice(realIdx,1);_favs.delete(item.hex);saveHist();saveFavs();renderHist();});
       const fav=document.createElement('button'); const isFav=_favs.has(item.hex);
       fav.className='fav-btn'+(isFav?' favorited':''); fav.textContent=isFav?'★':'☆';
       fav.addEventListener('click',e=>{e.stopPropagation();const now=_favs.has(item.hex);if(now)_favs.delete(item.hex);else _favs.add(item.hex);saveFavs();fav.classList.toggle('favorited');fav.textContent=now?'☆':'★';setTimeout(renderHist,150);});
       wr.appendChild(del);wr.appendChild(fav);
-      wr.addEventListener('click',()=>{const c=item.color;_curColor={r:c.r,g:c.g,b:c.b};D.cs.style.backgroundColor=item.hex;D.sh.textContent=item.hex.toUpperCase();D.sh.style.color=contrastColor(c);updateDisplay(c);D.cb.querySelector('.btn-text').textContent='复制色号';D.cb.style.background='';updateExportBtn();});
+      wr.addEventListener('click',()=>{const c=item.color;_curColor={r:c.r,g:c.g,b:c.b};_alpha=255;D.cs.style.backgroundColor=item.hex;D.sh.textContent=item.hex.toUpperCase();D.sh.style.color=contrastColor(c);updateDisplay(c);setRingBorder(c);D.cb.querySelector('.btn-text').textContent='复制色号';D.cb.style.background='';updateExportBtn();});
       D.hl.appendChild(wr);
     });
   }
 
-  function copyColor(fmt) { if (!_curColor) { toast('还没有取色'); return; } const text=gcs(_curColor,fmt); navigator.clipboard.writeText(text).then(()=>{const labels={hex:'HEX',rgb:'RGB',hsl:'HSL'};D.cb.querySelector('.btn-text').textContent=`✅ ${labels[fmt]} 已复制`;D.cb.style.background='#0d7377';setTimeout(()=>{D.cb.querySelector('.btn-text').textContent='复制色号';D.cb.style.background='';},2000);}).catch(()=>toast('复制失败')); }
+  function copyColor(fmt) { if (!_curColor) { toast('还没有取色'); return; } D.cs.classList.add('bounce'); setTimeout(() => D.cs.classList.remove('bounce'), 120); const text=gcs(_curColor,fmt); navigator.clipboard.writeText(text).then(()=>{const labels={hex:'HEX',rgb:'RGB',hsl:'HSL'};D.cb.querySelector('.btn-text').textContent=`✅ ${labels[fmt]} 已复制`;D.cb.style.background='#0d7377';setTimeout(()=>{D.cb.querySelector('.btn-text').textContent='复制色号';D.cb.style.background='';},2000);}).catch(()=>toast('复制失败')); }
 
   function onHexEdit() {
     _hexCancel = false;
@@ -459,7 +496,7 @@
 
   function resetZoom() { const s=imgState(); if (!s) return; if (s.zoomLevel!==1){s.zoomLevel=1;panOffset={x:0,y:0};fitImg(s);renderState(s);updateStatus();toast('已重置缩放');} }
 
-  function onSliderChange() { if (!_curColor) return; const h=parseInt(D.sH.value),s=parseInt(D.sS.value),l=parseInt(D.sL.value); D.svH.textContent=h;D.svS.textContent=s;D.svL.textContent=l; const rgb=hsl2rgb(h,s,l); _curColor=rgb; const hex=rgb2h(rgb.r,rgb.g,rgb.b); D.cs.style.backgroundColor=hex;D.sh.textContent=hex.toUpperCase();D.sh.style.color=contrastColor(rgb); updateDisplay(rgb); D.st.textContent=`微调中 · ${hex.toUpperCase()}`; }
+  function onSliderChange() { if (!_curColor) return; const h=parseInt(D.sH.value),s=parseInt(D.sS.value),l=parseInt(D.sL.value); _alpha=parseInt(D.sA.value); D.svH.textContent=h;D.svS.textContent=s;D.svL.textContent=l;D.svA.textContent=_alpha; const rgb=hsl2rgb(h,s,l); _curColor=rgb; const hex=rgb2h(rgb.r,rgb.g,rgb.b); D.cs.style.backgroundColor=_alpha<255?`rgba(${rgb.r},${rgb.g},${rgb.b},${(_alpha/255).toFixed(2)})`:hex;D.sh.textContent=hex.toUpperCase();D.sh.style.color=contrastColor(rgb); updateDisplay(rgb); D.st.textContent=`微调中 · ${hex.toUpperCase()}`+(_alpha<255?` (A:${_alpha})`:''); }
 
   function showExport() {
     if (!_curColor && _history.length === 0) { toast('还没有取色'); return; }
@@ -478,12 +515,13 @@
 
   function sharePalette() { if (_history.length===0) { toast('还没有取色记录'); return; } const data=_history.map(h=>h.hex.replace('#','')).join(','); const url=`${location.origin}${location.pathname}?p=${data}`; navigator.clipboard.writeText(url).then(()=>toast('分享链接已复制')).catch(()=>toast('复制失败')); }
 
-  function onWheel(e) { const s=imgState(); if (!s) return; e.preventDefault(); const mp=gcc(e), oldRect=s.imageRect, oldZ=s.zoomLevel; const d=e.deltaY>0?-ZOOM_STEP:ZOOM_STEP; const n=Math.max(ZOOM_MIN,Math.min(ZOOM_MAX,oldZ+d)); if (n===oldZ) return; s.zoomLevel=n; if (inside(mp.x,mp.y,s)) { const imgX=(mp.x-oldRect.x)/oldRect.s, imgY=(mp.y-oldRect.y)/oldRect.s; fitImg(s); s.imageRect.x=mp.x-imgX*s.imageRect.s; s.imageRect.y=mp.y-imgY*s.imageRect.s; panOffset.x=s.imageRect.x-(canvasW-s.offCvs.width*s.imageRect.s)/2; panOffset.y=s.imageRect.y-(canvasH-s.offCvs.height*s.imageRect.s)/2; } else { fitImg(s); panOffset={x:0,y:0}; } renderState(s); updateStatus(); }
+  function onWheel(e) { const s=imgState(); if (!s) return; e.preventDefault(); if (!localStorage.getItem('cr-zoom-hint')) { localStorage.setItem('cr-zoom-hint','1'); toast('滚轮缩放 · +/- 键缩放 · 0 重置 100%'); } const mp=gcc(e), oldRect=s.imageRect, oldZ=s.zoomLevel; const d=e.deltaY>0?-ZOOM_STEP:ZOOM_STEP; const n=Math.max(ZOOM_MIN,Math.min(ZOOM_MAX,oldZ+d)); if (n===oldZ) return; s.zoomLevel=n; if (inside(mp.x,mp.y,s)) { const imgX=(mp.x-oldRect.x)/oldRect.s, imgY=(mp.y-oldRect.y)/oldRect.s; fitImg(s); s.imageRect.x=mp.x-imgX*s.imageRect.s; s.imageRect.y=mp.y-imgY*s.imageRect.s; panOffset.x=s.imageRect.x-(canvasW-s.offCvs.width*s.imageRect.s)/2; panOffset.y=s.imageRect.y-(canvasH-s.offCvs.height*s.imageRect.s)/2; } else { fitImg(s); panOffset={x:0,y:0}; } renderState(s); updateStatus(); }
 
   function onKeyDown(e) {
     if (e.key==='Escape') { if (isDragging){isDragging=false;dragStart=null;dragEnd=null;const s=imgState();if(s)renderState(s);return;} if (!D.hm.hasAttribute('hidden')){toggleModal(D.hm);return;} if (!D.em.hasAttribute('hidden')){toggleModal(D.em);return;} D.ct.setAttribute('hidden',''); return; }
     if (e.key==='?') { toggleModal(D.hm); return; }
-    if (e.key==='f'||e.key==='F') { if (e.ctrlKey||e.metaKey) return; toggleFullscreen(); return; }
+    if ((e.key==='f'||e.key==='F')&&(e.ctrlKey||e.metaKey)) { e.preventDefault(); D.hs.focus(); return; }
+    if (e.key==='f'||e.key==='F') { toggleFullscreen(); return; }
     if ((e.key==='z'||e.key==='Z')&&(e.ctrlKey||e.metaKey)) { if (e.target.tagName==='INPUT') return; if (_history.length>0) { _history.pop(); if (_history.length>0) { const last=_history[_history.length-1]; const c=last.color; selectColor({r:c.r,g:c.g,b:c.b}, false); saveSel(); } else { _curColor=null; D.cs.style.backgroundColor='#1a1f2e'; D.sh.textContent='?'; D.hv.textContent='------'; D.rv.textContent='---, ---, ---'; D.hslv.textContent='---, ---, ---'; D.cn.hidden=true; D.ps.hidden=true; D.bs.hidden=true; D.cm.hidden=true; } saveHist(); renderHist(); toast('已撤销'); } return; }
     if (e.key==='Alt') { altHeld=true; if (imgState()) D.st.textContent='🔍 按住 Alt：吸管模式'; return; }
     if (!imgState()) return;
@@ -505,7 +543,6 @@
 
   function onCtxMenu(e) { e.preventDefault(); D.ct.style.left=(e.clientX-D.wr.getBoundingClientRect().left)+'px'; D.ct.style.top=(e.clientY-D.wr.getBoundingClientRect().top)+'px'; D.ct.removeAttribute('hidden'); }
   function hideCtx() { D.ct.setAttribute('hidden',''); }
-  $$('.ctx-item').forEach(item=>{item.addEventListener('click',()=>{D.ct.setAttribute('hidden','');switch(item.dataset.action){case'copy':if(_curColor)copyColor('hex');break;case'reset':resetZoom();break;case'dominant':extractDominant();break;}});});
 
   function dEnter(e){e.preventDefault();dragCounter++;if(dragCounter===1)D.dob.classList.add('active');}
   function dOver(e){e.preventDefault();}
@@ -514,7 +551,7 @@
 
   function renderTabs() { const ids=Object.keys(images); D.tabs.hidden=ids.length===0; D.tabsScroll.innerHTML=''; ids.forEach(id=>{const s=images[id];const tab=document.createElement('button');tab.className='img-tab'+(id===activeId?' active':'');tab.textContent=s.name||`图片 ${id}`;tab.addEventListener('click',()=>switchImage(id));const close=document.createElement('span');close.className='tab-close';close.textContent='×';close.addEventListener('click',e=>{e.stopPropagation();closeImage(id);});tab.appendChild(close);D.tabsScroll.appendChild(tab);}); }
 
-  function switchImage(id) { if (activeId===id) return; activeId=id; const s=images[id]; if (s) { loadHist(); _favs=loadFavs(); _locked=loadLocks(); if (s.offCtx) { D.ph.style.display='none'; s.zoomLevel=s.zoomLevel||1; renderState(s); } } renderTabs(); updateStatus(); }
+  function switchImage(id) { if (activeId===id) return; activeId=id; const s=images[id]; if (s) { loadHist(); _favs=loadFavs(); if (s.offCtx) { D.ph.style.display='none'; s.zoomLevel=s.zoomLevel||1; renderState(s); } } renderTabs(); updateStatus(); }
 
   function closeImage(id) { if (Object.keys(images).length<=1) { toast('至少保留一张图片'); return; } delete images[id]; if (activeId===id) { const remaining=Object.keys(images); switchImage(remaining[remaining.length-1]); } renderTabs(); }
 
